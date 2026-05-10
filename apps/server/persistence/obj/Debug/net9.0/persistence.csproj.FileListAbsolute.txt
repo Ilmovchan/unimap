@@ -1,0 +1,15 @@
+/Users/user/unimap/apps/server/persistence/bin/Debug/net9.0/persistence.deps.json
+/Users/user/unimap/apps/server/persistence/bin/Debug/net9.0/persistence.dll
+/Users/user/unimap/apps/server/persistence/bin/Debug/net9.0/persistence.pdb
+/Users/user/unimap/apps/server/persistence/bin/Debug/net9.0/domain.dll
+/Users/user/unimap/apps/server/persistence/bin/Debug/net9.0/domain.pdb
+/Users/user/unimap/apps/server/persistence/obj/Debug/net9.0/persistence.csproj.AssemblyReference.cache
+/Users/user/unimap/apps/server/persistence/obj/Debug/net9.0/persistence.GeneratedMSBuildEditorConfig.editorconfig
+/Users/user/unimap/apps/server/persistence/obj/Debug/net9.0/persistence.AssemblyInfoInputs.cache
+/Users/user/unimap/apps/server/persistence/obj/Debug/net9.0/persistence.AssemblyInfo.cs
+/Users/user/unimap/apps/server/persistence/obj/Debug/net9.0/persistence.csproj.CoreCompileInputs.cache
+/Users/user/unimap/apps/server/persistence/obj/Debug/net9.0/persiste.5D1D8312.Up2Date
+/Users/user/unimap/apps/server/persistence/obj/Debug/net9.0/persistence.dll
+/Users/user/unimap/apps/server/persistence/obj/Debug/net9.0/refint/persistence.dll
+/Users/user/unimap/apps/server/persistence/obj/Debug/net9.0/persistence.pdb
+/Users/user/unimap/apps/server/persistence/obj/Debug/net9.0/ref/persistence.dll
