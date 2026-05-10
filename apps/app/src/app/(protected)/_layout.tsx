@@ -1,0 +1,28 @@
+import { globalColors } from "@/src/styles/styles";
+import { Stack } from "expo-router";
+
+const ProtectedLayout = () => {
+  return (
+    <Stack
+      screenOptions={{
+        contentStyle: { backgroundColor: globalColors.background },
+        headerShadowVisible: false,
+      }}
+    >
+      <Stack.Screen name="index" options={{ headerShown: false }} />
+      <Stack.Screen
+        name="departments"
+        options={{
+          title: "Підрозділи",
+          headerTintColor: globalColors.title,
+          headerStyle: {
+            backgroundColor: globalColors.background,
+          },
+          headerBackTitle: "Назад",
+        }}
+      />
+    </Stack>
+  );
+};
+
+export default ProtectedLayout;
