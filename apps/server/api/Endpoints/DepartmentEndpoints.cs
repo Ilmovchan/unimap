@@ -1,6 +1,6 @@
-using Unimap.App.Abstractions;
+using app.Abstractions;
 
-namespace Unimap.Api.Endpoints;
+namespace api.Endpoints;
 
 public static class DepartmentEndpoints
 {

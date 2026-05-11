@@ -32,6 +32,9 @@
               "/Users/user/unimap/apps/server/domain/domain.csproj": {
                 "projectPath": "/Users/user/unimap/apps/server/domain/domain.csproj"
               },
+              "/Users/user/unimap/apps/server/infrastructure/infrastructure.csproj": {
+                "projectPath": "/Users/user/unimap/apps/server/infrastructure/infrastructure.csproj"
+              },
               "/Users/user/unimap/apps/server/persistence/persistence.csproj": {
                 "projectPath": "/Users/user/unimap/apps/server/persistence/persistence.csproj"
               }
@@ -182,6 +185,72 @@
           "net9.0": {
             "targetAlias": "net9.0",
             "projectReferences": {}
+          }
+        },
+        "warningProperties": {
+          "warnAsError": [
+            "NU1605"
+          ]
+        },
+        "restoreAuditProperties": {
+          "enableAudit": "true",
+          "auditLevel": "low",
+          "auditMode": "direct"
+        },
+        "SdkAnalysisLevel": "9.0.300"
+      },
+      "frameworks": {
+        "net9.0": {
+          "targetAlias": "net9.0",
+          "imports": [
+            "net461",
+            "net462",
+            "net47",
+            "net471",
+            "net472",
+            "net48",
+            "net481"
+          ],
+          "assetTargetFallback": true,
+          "warn": true,
+          "frameworkReferences": {
+            "Microsoft.NETCore.App": {
+              "privateAssets": "all"
+            }
+          },
+          "runtimeIdentifierGraphPath": "/usr/local/share/dotnet/sdk/9.0.300/PortableRuntimeIdentifierGraph.json"
+        }
+      }
+    },
+    "/Users/user/unimap/apps/server/infrastructure/infrastructure.csproj": {
+      "version": "1.0.0",
+      "restore": {
+        "projectUniqueName": "/Users/user/unimap/apps/server/infrastructure/infrastructure.csproj",
+        "projectName": "infrastructure",
+        "projectPath": "/Users/user/unimap/apps/server/infrastructure/infrastructure.csproj",
+        "packagesPath": "/Users/user/.nuget/packages/",
+        "outputPath": "/Users/user/unimap/apps/server/infrastructure/obj/",
+        "projectStyle": "PackageReference",
+        "configFilePaths": [
+          "/Users/user/.nuget/NuGet/NuGet.Config"
+        ],
+        "originalTargetFrameworks": [
+          "net9.0"
+        ],
+        "sources": {
+          "https://api.nuget.org/v3/index.json": {}
+        },
+        "frameworks": {
+          "net9.0": {
+            "targetAlias": "net9.0",
+            "projectReferences": {
+              "/Users/user/unimap/apps/server/app/app.csproj": {
+                "projectPath": "/Users/user/unimap/apps/server/app/app.csproj"
+              },
+              "/Users/user/unimap/apps/server/domain/domain.csproj": {
+                "projectPath": "/Users/user/unimap/apps/server/domain/domain.csproj"
+              }
+            }
           }
         },
         "warningProperties": {

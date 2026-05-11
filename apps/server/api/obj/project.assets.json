@@ -616,6 +616,20 @@
           "bin/placeholder/domain.dll": {}
         }
       },
+      "infrastructure/1.0.0": {
+        "type": "project",
+        "framework": ".NETCoreApp,Version=v9.0",
+        "dependencies": {
+          "app": "1.0.0",
+          "domain": "1.0.0"
+        },
+        "compile": {
+          "bin/placeholder/infrastructure.dll": {}
+        },
+        "runtime": {
+          "bin/placeholder/infrastructure.dll": {}
+        }
+      },
       "persistence/1.0.0": {
         "type": "project",
         "framework": ".NETCoreApp,Version=v9.0",
@@ -1667,6 +1681,11 @@
       "path": "../domain/domain.csproj",
       "msbuildProject": "../domain/domain.csproj"
     },
+    "infrastructure/1.0.0": {
+      "type": "project",
+      "path": "../infrastructure/infrastructure.csproj",
+      "msbuildProject": "../infrastructure/infrastructure.csproj"
+    },
     "persistence/1.0.0": {
       "type": "project",
       "path": "../persistence/persistence.csproj",
@@ -1681,6 +1700,7 @@
       "Swashbuckle.AspNetCore >= 10.1.7",
       "app >= 1.0.0",
       "domain >= 1.0.0",
+      "infrastructure >= 1.0.0",
       "persistence >= 1.0.0"
     ]
   },
@@ -1714,6 +1734,9 @@
             },
             "/Users/user/unimap/apps/server/domain/domain.csproj": {
               "projectPath": "/Users/user/unimap/apps/server/domain/domain.csproj"
+            },
+            "/Users/user/unimap/apps/server/infrastructure/infrastructure.csproj": {
+              "projectPath": "/Users/user/unimap/apps/server/infrastructure/infrastructure.csproj"
             },
             "/Users/user/unimap/apps/server/persistence/persistence.csproj": {
               "projectPath": "/Users/user/unimap/apps/server/persistence/persistence.csproj"

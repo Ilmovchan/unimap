@@ -4,7 +4,7 @@
     "slug": "unimap",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/icon.png",
+    "icon": "./assets/icons/ios-light.png",
     "scheme": "app",
     "userInterfaceStyle": "light",
     "ios": {
@@ -17,9 +17,9 @@
     "android": {
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
-        "foregroundImage": "./assets/icon.png",
-        "backgroundImage": "./assets/icon.png",
-        "monochromeImage": "./assets/icon.png"
+        "foregroundImage": "./assets/icons/ios-light.png",
+        "backgroundImage": "./assets/icons/ios-light.png",
+        "monochromeImage": "./assets/icons/ios-light.png"
       },
       "predictiveBackGestureEnabled": false,
       "package": "com.illiamovchan.app",
@@ -27,7 +27,7 @@
     },
     "web": {
       "output": "static",
-      "favicon": "./assets/icon.png"
+      "favicon": "./assets/icons/ios-light.png"
     },
     "plugins": [
       "expo-location",
@@ -35,11 +35,11 @@
       [
         "expo-splash-screen",
         {
-          "backgroundColor": "#F4F3EF",
+          "backgroundColor": "#FFFFFF",
           "image": "./assets/icon.png",
           "dark": {
             "image": "./assets/icon.png",
-            "backgroundColor": "#F4F3EF"
+            "backgroundColor": "#FFFFFF"
           },
           "imageWidth": 200
         }

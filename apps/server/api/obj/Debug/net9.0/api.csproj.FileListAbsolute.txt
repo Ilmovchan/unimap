@@ -76,3 +76,5 @@
 /Users/user/unimap/apps/server/api/obj/Debug/net9.0/ref/api.dll
 /Users/user/unimap/apps/server/api/bin/Debug/net9.0/Npgsql.dll
 /Users/user/unimap/apps/server/api/bin/Debug/net9.0/Npgsql.EntityFrameworkCore.PostgreSQL.dll
+/Users/user/unimap/apps/server/api/bin/Debug/net9.0/infrastructure.dll
+/Users/user/unimap/apps/server/api/bin/Debug/net9.0/infrastructure.pdb

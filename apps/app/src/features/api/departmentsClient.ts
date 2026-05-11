@@ -6,6 +6,14 @@ export type DepartmentDto = {
   lng: number;
   title: string;
   description?: string | null;
+  addressJson?: string | null;
+};
+
+export type DepartmentDetailDto = DepartmentDto & {
+  addressJson?: string | null;
+  iconUrl?: string | null;
+  createdAt?: string | null;
+  updatedAt?: string | null;
 };
 
 function apiBase(): string {
@@ -31,8 +39,37 @@ function normalizeDepartment(raw: Record<string, unknown>): DepartmentDto {
   const desc = pickRaw(raw, "description", "Description");
   const description =
     desc === undefined || desc === null ? null : String(desc);
+  const addr = pickRaw(raw, "addressJson", "AddressJson");
+  const addressJson =
+    addr === undefined || addr === null ? null : String(addr);
 
-  return { id, lat, lng, title, description };
+  return { id, lat, lng, title, description, addressJson };
+}
+
+function normalizeDepartmentDetail(
+  raw: Record<string, unknown>,
+): DepartmentDetailDto {
+  const base = normalizeDepartment(raw);
+  const addr = pickRaw(raw, "addressJson", "AddressJson");
+  const addressJson =
+    addr === undefined || addr === null ? null : String(addr);
+  const icon = pickRaw(raw, "iconUrl", "IconUrl");
+  const iconUrl =
+    icon === undefined || icon === null ? null : String(icon);
+  const ca = pickRaw(raw, "createdAt", "CreatedAt");
+  const createdAt =
+    ca === undefined || ca === null ? null : String(ca);
+  const ua = pickRaw(raw, "updatedAt", "UpdatedAt");
+  const updatedAt =
+    ua === undefined || ua === null ? null : String(ua);
+
+  return {
+    ...base,
+    addressJson,
+    iconUrl,
+    createdAt,
+    updatedAt,
+  };
 }
 
 export async function fetchDepartments(): Promise<DepartmentDto[]> {
@@ -56,4 +93,37 @@ export async function fetchDepartments(): Promise<DepartmentDto[]> {
   return data.map((item) =>
     normalizeDepartment(item as Record<string, unknown>),
   );
+}
+
+export async function fetchDepartmentById(
+  id: string,
+): Promise<DepartmentDetailDto> {
+  const base = apiBase();
+  if (!base) {
+    log.warn("[UniMap] EXPO_PUBLIC_UNIMAP_SERVER_API_LINK is not set");
+    throw new Error("EXPO_PUBLIC_UNIMAP_SERVER_API_LINK is not set");
+  }
+
+  const trimmed = id.trim();
+  if (!trimmed) {
+    throw new Error("Department id is empty");
+  }
+
+  const res = await fetch(
+    `${base}/departments/${encodeURIComponent(trimmed)}`,
+  );
+  if (res.status === 404) {
+    throw new Error("NOT_FOUND");
+  }
+  if (!res.ok) {
+    log.warn("[UniMap] GET /departments/:id failed", res.status);
+    throw new Error(`UniMap department: HTTP ${res.status}`);
+  }
+
+  const data: unknown = await res.json();
+  if (typeof data !== "object" || data === null || Array.isArray(data)) {
+    throw new Error("UniMap department: invalid response");
+  }
+
+  return normalizeDepartmentDetail(data as Record<string, unknown>);
 }

@@ -14,6 +14,7 @@
           "Swashbuckle.AspNetCore": "10.1.7",
           "app": "1.0.0",
           "domain": "1.0.0",
+          "infrastructure": "1.0.0",
           "persistence": "1.0.0"
         },
         "runtime": {
@@ -452,6 +453,18 @@
           }
         }
       },
+      "infrastructure/1.0.0": {
+        "dependencies": {
+          "app": "1.0.0",
+          "domain": "1.0.0"
+        },
+        "runtime": {
+          "infrastructure.dll": {
+            "assemblyVersion": "1.0.0.0",
+            "fileVersion": "1.0.0.0"
+          }
+        }
+      },
       "persistence/1.0.0": {
         "dependencies": {
           "Microsoft.EntityFrameworkCore": "9.0.6",
@@ -697,6 +710,11 @@
       "sha512": ""
     },
     "domain/1.0.0": {
+      "type": "project",
+      "serviceable": false,
+      "sha512": ""
+    },
+    "infrastructure/1.0.0": {
       "type": "project",
       "serviceable": false,
       "sha512": ""

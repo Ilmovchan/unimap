@@ -1,7 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Unimap.Domain.Entities;
 
-namespace Unimap.Persistence;
+namespace persistence;
 
 public sealed class UniMapDbContext : DbContext
 {

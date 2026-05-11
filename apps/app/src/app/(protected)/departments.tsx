@@ -1,3 +1,4 @@
+import { formatAddressJsonUkrLine } from "@/src/features/api/addressJsonDisplay";
 import {
   fetchDepartments,
   type DepartmentDto,
@@ -5,9 +6,11 @@ import {
 import { globalColors } from "@/src/styles/styles";
 import log from "loglevel";
 import { useCallback, useEffect, useState } from "react";
+import { useRouter } from "expo-router";
 import {
   ActivityIndicator,
   FlatList,
+  Pressable,
   RefreshControl,
   StyleSheet,
   Text,
@@ -15,6 +18,7 @@ import {
 } from "react-native";
 
 export default function DepartmentsScreen() {
+  const router = useRouter();
   const [departments, setDepartments] = useState<DepartmentDto[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [refreshing, setRefreshing] = useState<boolean>(false);
@@ -75,14 +79,30 @@ export default function DepartmentsScreen() {
             </Text>
           )
         }
-        renderItem={({ item }) => (
-          <View style={styles.row}>
-            <Text style={styles.rowTitle}>{item.title}</Text>
-            {item.description ? (
-              <Text style={styles.rowSubtitle}>{item.description}</Text>
-            ) : null}
-          </View>
-        )}
+        renderItem={({ item }) => {
+          const addressLine = formatAddressJsonUkrLine(item.addressJson);
+          return (
+            <Pressable
+              onPress={() =>
+                router.replace({
+                  pathname: "/",
+                  params: { focusDepartment: item.id },
+                })
+              }
+              style={({ pressed }) => [
+                styles.row,
+                pressed && styles.rowPressed,
+              ]}
+            >
+              <Text style={styles.rowTitle}>{item.title}</Text>
+              {addressLine ? (
+                <Text style={styles.rowSubtitle} numberOfLines={3}>
+                  {addressLine}
+                </Text>
+              ) : null}
+            </Pressable>
+          );
+        }}
       />
     </View>
   );
@@ -125,6 +145,9 @@ const styles = StyleSheet.create({
   row: {
     paddingVertical: 14,
     backgroundColor: "transparent",
+  },
+  rowPressed: {
+    opacity: 0.72,
   },
   rowTitle: {
     fontSize: 16,

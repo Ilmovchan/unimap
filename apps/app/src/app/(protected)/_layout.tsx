@@ -18,7 +18,7 @@ const ProtectedLayout = () => {
           headerStyle: {
             backgroundColor: globalColors.background,
           },
-          headerBackTitle: "Назад",
+          headerBackButtonDisplayMode: "minimal",
         }}
       />
     </Stack>

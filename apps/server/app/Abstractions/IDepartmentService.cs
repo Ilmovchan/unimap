@@ -1,6 +1,6 @@
 using Unimap.Domain.Entities;
 
-namespace Unimap.App.Abstractions;
+namespace app.Abstractions;
 
 public interface IDepartmentService
 {

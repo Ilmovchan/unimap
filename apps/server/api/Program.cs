@@ -1,8 +1,10 @@
-using Unimap.Persistence;
+using api.Endpoints;
+using app.Abstractions;
+using app.Services;
+using infrastructure.GeoService;
+using infrastructure.RoutingService;
 using Microsoft.EntityFrameworkCore;
-using Unimap.Api.Endpoints;
-using Unimap.App.Abstractions;
-using Unimap.App.Services;
+using persistence;
 using Unimap.Domain.Abstractions;
 using Unimap.Persistence.Repositories;
 
@@ -16,13 +18,13 @@ builder.Services.AddDbContextFactory<UniMapDbContext>(options =>
 
 builder.Services.AddScoped<IDepartmentRepository, DepartmentRepository>();
 builder.Services.AddScoped<IDepartmentService, DepartmentService>();
+builder.Services.AddScoped<IRoutingProvider, OpenRouteServiceRouter>();
+builder.Services.AddScoped<IGeoProvider, NominatimGeoService>();
 
 builder.Services.AddSwaggerGen();
 builder.Services.AddEndpointsApiExplorer();
 
 var app = builder.Build();
-
-
 
 if (app.Environment.IsDevelopment())
 {
@@ -38,5 +40,6 @@ if (app.Environment.IsDevelopment())
 }
 
 app.MapDepartmentEndpoints();
+app.MapNavigationEndpoints();
 
 app.Run();

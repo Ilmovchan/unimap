@@ -1,8 +1,8 @@
-using Unimap.App.Abstractions;
+using app.Abstractions;
 using Unimap.Domain.Abstractions;
 using Unimap.Domain.Entities;
 
-namespace Unimap.App.Services;
+namespace app.Services;
 
 public sealed class DepartmentService : IDepartmentService
 {
