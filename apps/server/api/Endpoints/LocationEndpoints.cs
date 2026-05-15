@@ -8,15 +8,24 @@ public static class LocationEndpoints
     {
         var group = app.MapGroup("/api/locations");
 
-        group.MapGet("/", GetLocationsAsync);
+        group.MapGet("/markers", GetLocationMarkersAsync);
+        group.MapGet("/", GetLocationsListAsync);
         group.MapGet("/{id:guid}", GetLocationByIdAsync);
     }
 
-    private static async Task<IResult> GetLocationsAsync(
+    private static async Task<IResult> GetLocationMarkersAsync(
         ILocationService locationService,
         CancellationToken cancellationToken)
     {
-        var locations = await locationService.GetLocationsForMapAsync(cancellationToken);
+        var markers = await locationService.GetLocationMarkersAsync(cancellationToken);
+        return Results.Ok(markers.Select(LocationResponseMaps.LocationMarker));
+    }
+
+    private static async Task<IResult> GetLocationsListAsync(
+        ILocationService locationService,
+        CancellationToken cancellationToken)
+    {
+        var locations = await locationService.GetLocationsListAsync(cancellationToken);
         return Results.Ok(locations.Select(LocationResponseMaps.LocationForMap));
     }
 

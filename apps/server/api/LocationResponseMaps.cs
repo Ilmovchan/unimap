@@ -1,16 +1,22 @@
+using domain;
 using domain.Entities;
+using domain.Models;
 
 namespace api;
 
 public static class LocationResponseMaps
 {
-    private static string ResolveMarkerKey(LocationType lt)
-    {
-        if (!string.IsNullOrWhiteSpace(lt.MarkerKey))
-            return lt.MarkerKey.Trim().ToLowerInvariant();
+    public static object LocationMarker(LocationMarker marker) =>
+        new
+        {
+            marker.Id,
+            latitude = marker.Latitude,
+            longitude = marker.Longitude,
+            markerKey = marker.MarkerKey,
+        };
 
-        return LocationTypeMarkerResolver.ResolveFromNameUk(lt.TitleUk);
-    }
+    private static string ResolveMarkerKey(LocationType lt) =>
+        LocationTypeMarkerResolver.Resolve(lt);
 
     private static object UniversityObjectBrief(UniversityObject o) =>
         new
@@ -29,12 +35,15 @@ public static class LocationResponseMaps
             location.Id,
             name = location.Title,
             type = location.LocationType.Code,
+            typeName = location.LocationType.TitleUk,
             markerKey = ResolveMarkerKey(location.LocationType),
             latitude = location.Latitude,
             longitude = location.Longitude,
             location.Description,
             location.ImageUrl,
             location.AddressJson,
+            createdAt = location.CreatedAt,
+            updatedAt = location.UpdatedAt,
             objects = location.UniversityObjects
                 .OrderBy(x => x.Title)
                 .Select(UniversityObjectBrief)
@@ -48,12 +57,15 @@ public static class LocationResponseMaps
             location.Id,
             name = location.Title,
             type = location.LocationType.Code,
+            typeName = location.LocationType.TitleUk,
             markerKey = ResolveMarkerKey(location.LocationType),
             latitude = location.Latitude,
             longitude = location.Longitude,
             location.Description,
             location.ImageUrl,
             location.AddressJson,
+            createdAt = location.CreatedAt,
+            updatedAt = location.UpdatedAt,
             highlightedObjectId,
             objects = location.UniversityObjects
                 .OrderBy(x => x.Title)

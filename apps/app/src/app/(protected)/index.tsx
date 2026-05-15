@@ -1,17 +1,19 @@
-import type { LocationMapDto } from "@/src/features/api/locationsClient";
-import { fetchLocations } from "@/src/features/api/locationsClient";
+import { fetchLocationMarkers } from "@/src/features/api/locationsClient";
 import { useLocation } from "@/src/features/core/location/stores/LocationProvider";
 import Map, {
   focusCameraLikeNavigateButton,
   focusCameraRouteFirstPerson,
   focusCameraToRoutePath,
+  focusCameraToRoutePathAfterImmersive,
   useMapRouteStore,
   type MapMarkerPoint,
 } from "@/src/features/map/";
 import LocationMapPreviewSheet from "@/src/features/map/LocationMapPreviewSheet";
 import LayoutButton from "@/src/features/map/components/LayoutButton";
+import { getUnreadNewsCount } from "@/src/features/news/newsClient";
 import { globalColors } from "@/src/styles/styles";
 import { Ionicons } from "@expo/vector-icons";
+import { useFocusEffect } from "@react-navigation/native";
 import { CameraRef } from "@maplibre/maplibre-react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import log from "loglevel";
@@ -38,7 +40,6 @@ export default function MapScreen() {
   const cameraRef = useRef<CameraRef | null>(null);
   const location = useLocation().location;
   const [markers, setMarkers] = useState<MapMarkerPoint[]>([]);
-  const [locations, setLocations] = useState<LocationMapDto[]>([]);
   const [selectedLocationId, setSelectedLocationId] = useState<string | null>(
     null,
   );
@@ -50,6 +51,7 @@ export default function MapScreen() {
   const routeFeature = useMapRouteStore((s) => s.routeFeature);
   const clearRoute = useMapRouteStore((s) => s.clearRoute);
   const [routeCameraImmersive, setRouteCameraImmersive] = useState(false);
+  const [unreadNewsCount, setUnreadNewsCount] = useState(0);
   const locationRef = useRef(location);
   locationRef.current = location;
   const hadRouteForCameraRef = useRef(false);
@@ -59,7 +61,7 @@ export default function MapScreen() {
     let cancelled = false;
     (async () => {
       try {
-        const list = await fetchLocations();
+        const list = await fetchLocationMarkers();
         if (cancelled) return;
 
         const next: MapMarkerPoint[] = list
@@ -73,11 +75,10 @@ export default function MapScreen() {
             id: d.id,
             lat: d.lat,
             lng: d.lng,
-            markerKey: d.markerKey ?? "building",
+            markerKey: d.markerKey,
           }));
 
         setMarkers(next);
-        setLocations(list);
       } catch (e) {
         log.warn("[UniMap] map locations load failed", e);
       }
@@ -87,11 +88,24 @@ export default function MapScreen() {
     };
   }, []);
 
+  const refreshUnreadNewsCount = useCallback(() => {
+    void (async () => {
+      try {
+        const count = await getUnreadNewsCount();
+        setUnreadNewsCount(count);
+      } catch (e) {
+        log.warn("[UniMap] unread news count failed", e);
+      }
+    })();
+  }, []);
+
+  useFocusEffect(refreshUnreadNewsCount);
+
   useEffect(() => {
     const focusId = focusLocationParam(focusLocationRaw);
     if (!focusId) return;
 
-    const loc = locations.find((d) => d.id === focusId);
+    const loc = markers.find((d) => d.id === focusId);
     if (!loc || !Number.isFinite(loc.lat) || !Number.isFinite(loc.lng)) {
       return;
     }
@@ -120,7 +134,7 @@ export default function MapScreen() {
     };
 
     setTimeout(() => runFocus(0), 0);
-  }, [focusLocationRaw, locations, clearRoute, router]);
+  }, [focusLocationRaw, markers, clearRoute, router]);
 
   useEffect(() => {
     const coords = routeFeature?.geometry?.coordinates;
@@ -148,22 +162,30 @@ export default function MapScreen() {
       return;
     }
 
+    const userLngLat: [number, number] = [
+      loc.coords.longitude,
+      loc.coords.latitude,
+    ];
+    const returningFromImmersive =
+      immersiveToggled && !routeCameraImmersive;
+
     if (routeCameraImmersive) {
       setCameraFollowUser(false);
-      focusCameraRouteFirstPerson(cameraRef, [
-        loc.coords.longitude,
-        loc.coords.latitude,
-      ], path);
+      focusCameraRouteFirstPerson(cameraRef, userLngLat, path);
     } else {
       setCameraFollowUser(false);
-      focusCameraToRoutePath(cameraRef, path);
+      if (returningFromImmersive) {
+        focusCameraToRoutePathAfterImmersive(cameraRef, path);
+      } else {
+        focusCameraToRoutePath(cameraRef, path);
+      }
     }
   }, [routeFeature, routeCameraImmersive]);
 
   const handleRouteNavigationBack = useCallback(() => {
     const id = selectedLocationId;
     const loc =
-      id == null ? undefined : locations.find((d) => d.id === id);
+      id == null ? undefined : markers.find((d) => d.id === id);
 
     clearRoute();
     setRouteCameraImmersive(false);
@@ -201,7 +223,7 @@ export default function MapScreen() {
     };
 
     setTimeout(() => runFocus(0), 0);
-  }, [clearRoute, locations, selectedLocationId]);
+  }, [clearRoute, markers, selectedLocationId]);
 
   const handleSheetClosed = useCallback(() => {
     if (useMapRouteStore.getState().routeFeature) {
@@ -234,6 +256,10 @@ export default function MapScreen() {
 
   if (!location) return null;
 
+  const fabTop = insets.top + 12;
+  const fabBottom = insets.bottom + 24;
+  const fabSide = 20;
+
   return (
     <View style={{ flex: 1 }}>
       <Map
@@ -252,7 +278,6 @@ export default function MapScreen() {
       <View style={styles.sheetLayer} pointerEvents="box-none">
         <LocationMapPreviewSheet
           locationId={selectedLocationId}
-          locations={locations}
           userLocation={location}
           routeCameraImmersive={routeCameraImmersive}
           onToggleRouteCameraImmersive={toggleRouteCameraImmersive}
@@ -263,8 +288,49 @@ export default function MapScreen() {
 
       <LayoutButton
         style={{
-          bottom: insets.bottom + 24,
-          right: 20,
+          top: fabTop,
+          left: fabSide,
+          zIndex: 9999,
+        }}
+        icon={
+          <Ionicons
+            size={26}
+            name="business-outline"
+            color={globalColors.navigationFabIcon}
+          />
+        }
+        accessibilityLabel="Усі відділення"
+        onPress={() => router.push("/locations")}
+      />
+
+      <LayoutButton
+        style={{
+          top: fabTop,
+          right: fabSide,
+          zIndex: 9999,
+        }}
+        icon={
+          <Ionicons
+            size={26}
+            name="newspaper-outline"
+            color={globalColors.navigationFabIcon}
+          />
+        }
+        badgeCount={unreadNewsCount > 0 ? unreadNewsCount : undefined}
+        accessibilityLabel={
+          unreadNewsCount > 0
+            ? `Новини університету, ${unreadNewsCount} непрочитаних`
+            : "Новини університету"
+        }
+        onPress={() => {
+          router.push("/news");
+        }}
+      />
+
+      <LayoutButton
+        style={{
+          bottom: fabBottom,
+          right: fabSide,
           zIndex: 9999,
         }}
         icon={

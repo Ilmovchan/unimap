@@ -12,7 +12,15 @@ export type LocationUniversityObjectDto = {
   description?: string | null;
 };
 
-/** Локація для карти. */
+/** Маркер для карти (легкий список). */
+export type LocationMarkerDto = {
+  id: string;
+  lat: number;
+  lng: number;
+  markerKey: string;
+};
+
+/** Локація для списку / деталей. */
 export type LocationMapDto = {
   id: string;
   name: string;
@@ -29,6 +37,8 @@ export type LocationMapDto = {
   markerKey?: string | null;
   objects?: LocationUniversityObjectDto[];
   highlightedObjectId?: string | null;
+  createdAt?: string | null;
+  updatedAt?: string | null;
 };
 
 export type LocationDetailDto = LocationMapDto;
@@ -77,19 +87,31 @@ function normalizeApiMarkerKey(raw: string | null | undefined): string | null {
   return lower;
 }
 
-/** Відображення маркера за технічним кодом типу локації (academic_building, sport_facility, …). */
+/** Відображення маркера за кодом типу (stadium, dormitory, library, building, other). */
 function markerKeyFromLocationTypeCode(
   code: string | null | undefined,
 ): string | null {
   const c = (code ?? "").trim().toLowerCase();
   if (!c) return null;
-  if (c.includes("library")) return "library";
-  if (c.includes("sport") || c.includes("stadium")) return "stadium";
-  if (c.includes("admin")) return "admin";
-  if (c === "other" || c.includes("misc")) return "default";
-  if (c.includes("building") || c.includes("campus") || c.includes("hall"))
-    return "building";
-  return null;
+  switch (c) {
+    case "library":
+      return "library";
+    case "stadium":
+      return "stadium";
+    case "dormitory":
+      return "building";
+    case "building":
+      return "building";
+    case "other":
+      return "default";
+    default:
+      if (c.includes("library")) return "library";
+      if (c.includes("stadium") || c.includes("sport")) return "stadium";
+      if (c.includes("dorm")) return "building";
+      if (c.includes("building")) return "building";
+      if (c === "other" || c.includes("misc")) return "default";
+      return null;
+  }
 }
 
 /** Резерв, якщо API не віддав markerKey (узгоджено з `LocationTypeMarkerResolver`). */
@@ -102,14 +124,15 @@ export function markerKeyFromLocationTypeTitle(
     return "stadium";
   if (t.includes("адмін")) return "admin";
   if (t.includes("інш")) return "default";
+  if (t.includes("гуртожит") || t.includes("dormitory")) return "building";
   if (
     t.includes("будівл") ||
     t.includes("будивл") ||
     t.includes("building") ||
     t.includes("корпус") ||
-    t.includes("гуртожит") ||
     t.includes("навчальн") ||
-    t.includes("споруд")
+    t.includes("споруд") ||
+    t.includes("факультет")
   )
     return "building";
   if (t.includes("приймальн") && t.includes("коміс")) return "info";
@@ -247,6 +270,17 @@ function normalizeLocationMap(raw: Record<string, unknown>): LocationMapDto {
       ? null
       : String(highlightRaw).trim() || null;
 
+  const createdRaw = pickRaw(raw, "createdAt", "CreatedAt");
+  const updatedRaw = pickRaw(raw, "updatedAt", "UpdatedAt");
+  const createdAt =
+    createdRaw === undefined || createdRaw === null
+      ? null
+      : String(createdRaw).trim() || null;
+  const updatedAt =
+    updatedRaw === undefined || updatedRaw === null
+      ? null
+      : String(updatedRaw).trim() || null;
+
   return {
     id,
     name,
@@ -263,7 +297,33 @@ function normalizeLocationMap(raw: Record<string, unknown>): LocationMapDto {
     markerKey,
     objects,
     highlightedObjectId,
+    createdAt,
+    updatedAt,
   };
+}
+
+export function formatLocationDateTime(iso: string | null | undefined): string {
+  if (!iso?.trim()) return "";
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "";
+  return d.toLocaleString("uk-UA", {
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
+export function formatLocationDate(iso: string | null | undefined): string {
+  if (!iso?.trim()) return "";
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "";
+  return d.toLocaleDateString("uk-UA", {
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  });
 }
 
 function normalizeLocationDetail(raw: Record<string, unknown>): LocationDetailDto {
@@ -272,6 +332,61 @@ function normalizeLocationDetail(raw: Record<string, unknown>): LocationDetailDt
 
 const LOCATIONS_PATH = "/locations";
 
+function normalizeLocationMarker(raw: Record<string, unknown>): LocationMarkerDto {
+  const id = String(pickRaw(raw, "id", "Id") ?? "").trim();
+  const lat = pickFiniteCoord(
+    raw,
+    "lat",
+    "Lat",
+    "latitude",
+    "Latitude",
+  );
+  const lng = pickFiniteCoord(
+    raw,
+    "lng",
+    "Lng",
+    "Lon",
+    "long",
+    "Long",
+    "longitude",
+    "Longitude",
+  );
+  const typeRaw = pickRaw(raw, "type", "Type");
+  const mk = pickRaw(raw, "markerKey", "MarkerKey");
+  const markerKeyRaw =
+    mk === undefined || mk === null ? null : String(mk).trim() || null;
+  const markerKey = resolveMarkerKeyForMap(
+    markerKeyRaw,
+    typeRaw === undefined || typeRaw === null ? null : String(typeRaw),
+  );
+  return { id, lat, lng, markerKey };
+}
+
+/** Легкий список маркерів для ініціалізації карти. */
+export async function fetchLocationMarkers(): Promise<LocationMarkerDto[]> {
+  const base = apiBase();
+  if (!base) {
+    log.warn("[UniMap] EXPO_PUBLIC_UNIMAP_SERVER_API_LINK is not set");
+    throw new Error("EXPO_PUBLIC_UNIMAP_SERVER_API_LINK is not set");
+  }
+
+  const res = await fetch(`${base}${LOCATIONS_PATH}/markers`);
+  if (!res.ok) {
+    log.warn("[UniMap] GET /locations/markers failed", res.status);
+    throw new Error(`UniMap location markers: HTTP ${res.status}`);
+  }
+
+  const data: unknown = await res.json();
+  if (!Array.isArray(data)) {
+    throw new Error("UniMap location markers: response is not an array");
+  }
+
+  return data.map((item) =>
+    normalizeLocationMarker(item as Record<string, unknown>),
+  );
+}
+
+/** Повний список локацій для екрану «Усі відділення». */
 export async function fetchLocations(): Promise<LocationMapDto[]> {
   const base = apiBase();
   if (!base) {

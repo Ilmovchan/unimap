@@ -1,4 +1,6 @@
+using domain;
 using domain.Entities;
+using domain.Models;
 using Microsoft.EntityFrameworkCore;
 using Unimap.Domain.Abstractions;
 
@@ -7,7 +9,29 @@ namespace persistence.Repositories;
 public sealed class LocationRepository(IDbContextFactory<UniMapDbContext> dbContextFactory)
     : ILocationRepository
 {
-    public async Task<IReadOnlyList<Location>> GetAllForMapAsync(
+    public async Task<IReadOnlyList<LocationMarker>> GetMarkersAsync(
+        CancellationToken cancellationToken = default)
+    {
+        await using var context = await dbContextFactory
+            .CreateDbContextAsync(cancellationToken);
+
+        var locations = await context.Locations
+            .AsNoTracking()
+            .Include(x => x.LocationType)
+            .OrderBy(x => x.Latitude)
+            .ThenBy(x => x.Longitude)
+            .ToListAsync(cancellationToken);
+
+        return locations
+            .Select(x => new LocationMarker(
+                x.Id,
+                x.Latitude,
+                x.Longitude,
+                LocationTypeMarkerResolver.Resolve(x.LocationType)))
+            .ToList();
+    }
+
+    public async Task<IReadOnlyList<Location>> GetAllWithDetailsAsync(
         CancellationToken cancellationToken = default)
     {
         await using var context = await dbContextFactory

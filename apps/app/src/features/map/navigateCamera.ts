@@ -6,6 +6,9 @@ import { Dimensions } from "react-native";
 /** Було 1200 мс; +30% повільніша анімація (менш «різка»). */
 export const MARKER_FOCUS_ANIMATION_DURATION_MS = 1560;
 
+/** Крок 1 при поверненні з immersive: лише вирівнюємо pitch/heading, без зміни bounds. */
+const ROUTE_RETURN_UNTILT_MS = 1000;
+
 /** Нахил камери під час показу маршруту (3D-ефект). */
 export const ROUTE_CAMERA_PITCH_DEG = 58;
 
@@ -42,6 +45,8 @@ export function singleMarkerFocusZoomLevel(): number {
 export type FitBoundsCameraExtras = {
   pitch?: number;
   heading?: number;
+  animationMode?: "flyTo" | "easeTo";
+  animationDuration?: number;
 };
 
 export function focusCameraToFitBounds(
@@ -59,8 +64,9 @@ export function focusCameraToFitBounds(
   cameraRef.current?.setCamera({
     bounds: { ne, sw },
     padding,
-    animationDuration: MARKER_FOCUS_ANIMATION_DURATION_MS,
-    animationMode: "flyTo",
+    animationDuration:
+      extras?.animationDuration ?? MARKER_FOCUS_ANIMATION_DURATION_MS,
+    animationMode: extras?.animationMode ?? "flyTo",
     ...(extras?.pitch !== undefined ? { pitch: extras.pitch } : {}),
     ...(extras?.heading !== undefined ? { heading: extras.heading } : {}),
   });
@@ -165,17 +171,39 @@ export function focusCameraRouteFirstPerson(
   });
 }
 
-/** Огляд маршруту зверху (без нахилу, північ вгорі). */
+/** Огляд маршруту зверху (та сама логіка, що при першому побудуванні маршруту). */
 export function focusCameraToRoutePath(
   cameraRef: RefObject<CameraRef | null>,
   coords: [number, number][],
 ): void {
   const box = boundingBoxFromLngLatPath(coords);
   if (!box) return;
+
   focusCameraToFitBounds(cameraRef, box.ne, box.sw, routeFitPadding(), {
     pitch: 0,
     heading: 0,
   });
+}
+
+/**
+ * Повернення з режиму «від обличчя»:
+ * 1) плавно скидаємо pitch/heading (без зміни кадру bounds);
+ * 2) той самий `focusCameraToRoutePath`, що при першому побудуванні маршруту.
+ */
+export function focusCameraToRoutePathAfterImmersive(
+  cameraRef: RefObject<CameraRef | null>,
+  coords: [number, number][],
+): void {
+  cameraRef.current?.setCamera({
+    pitch: 0,
+    heading: 0,
+    animationDuration: ROUTE_RETURN_UNTILT_MS,
+    animationMode: "easeTo",
+  });
+
+  setTimeout(() => {
+    focusCameraToRoutePath(cameraRef, coords);
+  }, ROUTE_RETURN_UNTILT_MS + 64);
 }
 
 /** Повернути «пласку» карту після маршруту. */

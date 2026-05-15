@@ -18,6 +18,8 @@ public sealed class UniMapDbContext : DbContext
 
     public DbSet<UniversityObject> UniversityObjects => Set<UniversityObject>();
 
+    public DbSet<News> News => Set<News>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(UniMapDbContext).Assembly);

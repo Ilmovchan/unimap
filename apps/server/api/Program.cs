@@ -19,6 +19,8 @@ builder.Services.AddDbContextFactory<UniMapDbContext>(options =>
 
 builder.Services.AddScoped<ILocationRepository, LocationRepository>();
 builder.Services.AddScoped<ILocationService, LocationService>();
+builder.Services.AddScoped<INewsRepository, NewsRepository>();
+builder.Services.AddScoped<INewsService, NewsService>();
 builder.Services.AddScoped<IRoutingProvider, OpenRouteServiceRouter>();
 builder.Services.AddScoped<IGeoProvider, NominatimGeoService>();
 builder.Services.AddHostedService<LocationAddressJsonBackfillWorker>();
@@ -33,15 +35,16 @@ if (app.Environment.IsDevelopment())
     app.UseSwagger();
     app.UseSwaggerUI();
 
-    // using (var scope = app.Services.CreateScope())
-    // {
-    //     var dbContextFactory = scope.ServiceProvider.GetRequiredService<IDbContextFactory<UniMapDbContext>>();
-    //     using var db = dbContextFactory.CreateDbContext();
-    //     db.Database.EnsureCreated();
-    // }
+    using (var scope = app.Services.CreateScope())
+    {
+        var dbContextFactory = scope.ServiceProvider.GetRequiredService<IDbContextFactory<UniMapDbContext>>();
+        using var db = dbContextFactory.CreateDbContext();
+        db.Database.Migrate();
+    }
 }
 
 app.MapLocationEndpoints();
+app.MapNewsEndpoints();
 app.MapNavigationEndpoints();
 
 app.Run();

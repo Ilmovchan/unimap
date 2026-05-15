@@ -1,7 +1,6 @@
 import {
   fetchLocationById,
   type LocationDetailDto,
-  type LocationMapDto,
 } from "@/src/features/api/locationsClient";
 import {
   fetchNavigationRoute,
@@ -42,7 +41,6 @@ import { useMapRouteStore } from "./mapRouteStore";
 
 type Props = {
   locationId: string | null;
-  locations: LocationMapDto[];
   userLocation: Location.LocationObject;
   routeCameraImmersive: boolean;
   onToggleRouteCameraImmersive: () => void;
@@ -94,7 +92,6 @@ function formatDurationUa(seconds: number): string {
 
 export default function LocationMapPreviewSheet({
   locationId,
-  locations,
   userLocation,
   routeCameraImmersive,
   onToggleRouteCameraImmersive,
@@ -117,13 +114,7 @@ export default function LocationMapPreviewSheet({
   } | null>(null);
   const routeRefreshInFlightRef = useRef(false);
 
-  const preview = useMemo(
-    () =>
-      locationId ? (locations.find((l) => l.id === locationId) ?? null) : null,
-    [locations, locationId],
-  );
-
-  const sheetLoc = useMemo(() => detail ?? preview, [detail, preview]);
+  const sheetLoc = detail;
 
   const sheetTitle = useMemo(
     () => (sheetLoc ? locationCardTitle(sheetLoc) : "Місце на карті"),
@@ -191,12 +182,12 @@ export default function LocationMapPreviewSheet({
   }, [isNavPanel]);
 
   useEffect(() => {
-    if (!isNavPanel || !preview) {
+    if (!isNavPanel || !detail) {
       lastRouteRefreshAnchorRef.current = null;
       return;
     }
 
-    if (!Number.isFinite(preview.lat) || !Number.isFinite(preview.lng)) {
+    if (!Number.isFinite(detail.lat) || !Number.isFinite(detail.lng)) {
       return;
     }
 
@@ -226,8 +217,8 @@ export default function LocationMapPreviewSheet({
         const { coordinates, summary } = await fetchNavigationRoute({
           startLng: lng,
           startLat: lat,
-          endLng: preview.lng,
-          endLat: preview.lat,
+          endLng: detail.lng,
+          endLat: detail.lat,
         });
         setRouteCoords(coordinates, summary);
         lastRouteRefreshAnchorRef.current = { latitude: lat, longitude: lng };
@@ -237,7 +228,7 @@ export default function LocationMapPreviewSheet({
         routeRefreshInFlightRef.current = false;
       }
     })();
-  }, [isNavPanel, preview, userLocation, setRouteCoords]);
+  }, [isNavPanel, detail, userLocation, setRouteCoords]);
 
   const handleSheetChange = useCallback(
     (index: number) => {
@@ -255,9 +246,9 @@ export default function LocationMapPreviewSheet({
 
   const startNavigation = useCallback(() => {
     if (
-      !preview ||
-      !Number.isFinite(preview.lat) ||
-      !Number.isFinite(preview.lng)
+      !detail ||
+      !Number.isFinite(detail.lat) ||
+      !Number.isFinite(detail.lng)
     ) {
       return;
     }
@@ -267,8 +258,8 @@ export default function LocationMapPreviewSheet({
         const { coordinates, summary } = await fetchNavigationRoute({
           startLng: userLocation.coords.longitude,
           startLat: userLocation.coords.latitude,
-          endLng: preview.lng,
-          endLat: preview.lat,
+          endLng: detail.lng,
+          endLat: detail.lat,
         });
         setRouteCoords(coordinates, summary);
       } catch (e) {
@@ -279,7 +270,7 @@ export default function LocationMapPreviewSheet({
         setNavLoading(false);
       }
     })();
-  }, [preview, setRouteCoords, userLocation]);
+  }, [detail, setRouteCoords, userLocation]);
 
   const scrollBottomPad = Math.max(insets.bottom, 12);
 
@@ -399,25 +390,6 @@ export default function LocationMapPreviewSheet({
         >
           <View style={styles.toolbarWrap}>
             <View style={styles.toolbar}>
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel="Додати в обране"
-                hitSlop={12}
-                style={({ pressed }) => [
-                  styles.iconButton,
-                  pressed && styles.iconButtonPressed,
-                ]}
-                onPress={() => {
-                  /* обране — пізніше */
-                }}
-              >
-                <Ionicons
-                  name="star-outline"
-                  size={24}
-                  color={globalColors.navigationFabIcon}
-                />
-              </Pressable>
-
               <Pressable
                 accessibilityRole="button"
                 accessibilityHint="Розгорнути картку локації"

@@ -1,11 +1,13 @@
 import { formatAddressJsonUkrLine } from "@/src/features/api/addressJsonDisplay";
 import {
+  formatLocationDate,
   type LocationDetailDto,
   type LocationUniversityObjectDto,
 } from "@/src/features/api/locationsClient";
 import { globalColors } from "@/src/styles/styles";
 import { Image } from "expo-image";
-import { Platform, StyleSheet, Text, View } from "react-native";
+import { StyleSheet, Text, View } from "react-native";
+import { locationCardStyles as styles } from "./locationCardStyles";
 
 type Props = {
   location: LocationDetailDto;
@@ -21,7 +23,7 @@ export function locationCardTitle(location: LocationDetailDto): string {
   return name || "Місце на карті";
 }
 
-function locationAddressText(location: LocationDetailDto): string | null {
+export function locationAddressText(location: LocationDetailDto): string | null {
   const plain = location.address?.trim();
   if (plain) return plain;
   const fromJson = formatAddressJsonUkrLine(location.addressJson);
@@ -39,6 +41,7 @@ export function LocationDetailSections({
   const objects = formatObjectsList(location);
   const highlightId = location.highlightedObjectId?.trim();
   const showObjectsSection = objects.length > 1;
+  const updatedLine = formatLocationDate(location.updatedAt);
 
   return (
     <>
@@ -80,81 +83,43 @@ export function LocationDetailSections({
               <View
                 key={o.id}
                 style={[
-                  styles.objRow,
-                  i === 0 && styles.objRowFirst,
-                  highlighted && styles.objRowHighlight,
+                  detailStyles.objRow,
+                  i === 0 && detailStyles.objRowFirst,
+                  highlighted && detailStyles.objRowHighlight,
                 ]}
               >
-                <Text style={styles.objName}>{o.name}</Text>
+                <Text style={detailStyles.objName}>{o.name}</Text>
                 {o.typeName ? (
-                  <Text style={styles.objType}>{o.typeName}</Text>
+                  <Text style={detailStyles.objType}>{o.typeName}</Text>
                 ) : null}
                 {o.floor != null && Number.isFinite(o.floor) ? (
-                  <Text style={styles.objMeta}>Поверх: {o.floor}</Text>
+                  <Text style={detailStyles.objMeta}>Поверх: {o.floor}</Text>
                 ) : null}
                 {o.roomNumber ? (
-                  <Text style={styles.objMeta}>Аудиторія: {o.roomNumber}</Text>
+                  <Text style={detailStyles.objMeta}>
+                    Аудиторія: {o.roomNumber}
+                  </Text>
                 ) : null}
                 {o.description?.trim() ? (
-                  <Text style={styles.objDesc}>{o.description.trim()}</Text>
+                  <Text style={detailStyles.objDesc}>{o.description.trim()}</Text>
                 ) : null}
               </View>
             );
           })}
         </View>
       ) : null}
+
+      {updatedLine ? (
+        <View style={styles.card}>
+          <Text style={styles.sectionLabel}>Останнє оновлення</Text>
+          <Text style={styles.bodyText}>{updatedLine}</Text>
+        </View>
+      ) : null}
     </>
   );
 }
 
-const styles = StyleSheet.create({
-  headline: {
-    fontSize: 22,
-    fontWeight: "600",
-    color: globalColors.title,
-    letterSpacing: -0.3,
-    marginBottom: 20,
-  },
-  card: {
-    backgroundColor: globalColors.surface,
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: globalColors.border,
-    paddingHorizontal: 18,
-    paddingVertical: 16,
-    marginBottom: 14,
-    ...Platform.select({
-      ios: {
-        shadowColor: globalColors.navigationFabShadow,
-        shadowOpacity: 0.1,
-        shadowRadius: 10,
-        shadowOffset: { width: 0, height: 3 },
-      },
-      android: {
-        elevation: 3,
-      },
-      default: {},
-    }),
-  },
-  heroImage: {
-    width: "100%",
-    height: 200,
-    borderRadius: 10,
-    backgroundColor: globalColors.background,
-  },
-  sectionLabel: {
-    fontSize: 12,
-    fontWeight: "600",
-    color: globalColors.subtitle,
-    textTransform: "uppercase",
-    letterSpacing: 0.4,
-    marginBottom: 8,
-  },
-  bodyText: {
-    fontSize: 15,
-    lineHeight: 22,
-    color: globalColors.title,
-  },
+const detailStyles = StyleSheet.create({
   objRow: {
     marginTop: 10,
     paddingTop: 10,

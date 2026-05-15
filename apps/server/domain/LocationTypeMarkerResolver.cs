@@ -1,7 +1,9 @@
-namespace api;
+using domain.Entities;
+
+namespace domain;
 
 /// <summary>
-/// Резервне визначення маркера, якщо у БД порожній <c>marker_key</c>.
+/// Визначення ключа маркера за типом локації.
 /// </summary>
 public static class LocationTypeMarkerResolver
 {
@@ -11,6 +13,34 @@ public static class LocationTypeMarkerResolver
     private const string MarkerAdmin = "admin";
     private const string MarkerDefault = "default";
     private const string MarkerInfo = "info";
+
+    public static string Resolve(LocationType locationType)
+    {
+        if (!string.IsNullOrWhiteSpace(locationType.MarkerKey))
+            return locationType.MarkerKey.Trim().ToLowerInvariant();
+
+        var fromCode = ResolveFromCode(locationType.Code);
+        if (fromCode is not null)
+            return fromCode;
+
+        return ResolveFromNameUk(locationType.TitleUk);
+    }
+
+    public static string? ResolveFromCode(string? code)
+    {
+        if (string.IsNullOrWhiteSpace(code))
+            return null;
+
+        return code.Trim().ToLowerInvariant() switch
+        {
+            "library" => MarkerLibrary,
+            "stadium" => MarkerStadium,
+            "dormitory" => MarkerBuilding,
+            "building" => MarkerBuilding,
+            "other" => MarkerDefault,
+            _ => null,
+        };
+    }
 
     public static string ResolveFromNameUk(string? nameUk)
     {
@@ -24,6 +54,9 @@ public static class LocationTypeMarkerResolver
 
         if (ContainsAny(t, "стадіон", "stadium", "спортив"))
             return MarkerStadium;
+
+        if (ContainsAny(t, "гуртожит", "dormitory"))
+            return MarkerBuilding;
 
         if (ContainsAny(t, "адміністратив"))
             return MarkerAdmin;

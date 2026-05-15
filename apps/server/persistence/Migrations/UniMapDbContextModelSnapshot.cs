@@ -28,11 +28,6 @@ namespace persistence.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("id");
 
-                    b.Property<string>("Address")
-                        .HasMaxLength(255)
-                        .HasColumnType("character varying(255)")
-                        .HasColumnName("address");
-
                     b.Property<string>("AddressJson")
                         .HasColumnType("jsonb")
                         .HasColumnName("address_json");
@@ -61,11 +56,11 @@ namespace persistence.Migrations
                         .HasColumnType("double precision")
                         .HasColumnName("longitude");
 
-                    b.Property<string>("Name")
+                    b.Property<string>("Title")
                         .IsRequired()
                         .HasMaxLength(150)
                         .HasColumnType("character varying(150)")
-                        .HasColumnName("name");
+                        .HasColumnName("title");
 
                     b.Property<DateTimeOffset>("UpdatedAt")
                         .HasColumnType("timestamp with time zone")
@@ -100,11 +95,11 @@ namespace persistence.Migrations
                         .HasColumnType("character varying(50)")
                         .HasColumnName("marker_key");
 
-                    b.Property<string>("NameUk")
+                    b.Property<string>("TitleUk")
                         .IsRequired()
                         .HasMaxLength(100)
                         .HasColumnType("character varying(100)")
-                        .HasColumnName("name_uk");
+                        .HasColumnName("title_uk");
 
                     b.Property<DateTimeOffset>("UpdatedAt")
                         .HasColumnType("timestamp with time zone")
@@ -116,6 +111,44 @@ namespace persistence.Migrations
                         .IsUnique();
 
                     b.ToTable("location_type", (string)null);
+                });
+
+            modelBuilder.Entity("domain.Entities.News", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("Content")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("content");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_active");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)")
+                        .HasColumnName("title");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CreatedAt");
+
+                    b.HasIndex("IsActive");
+
+                    b.ToTable("news", (string)null);
                 });
 
             modelBuilder.Entity("domain.Entities.UniversityObject", b =>
@@ -133,28 +166,19 @@ namespace persistence.Migrations
                         .HasColumnType("character varying(4000)")
                         .HasColumnName("description");
 
-                    b.Property<int?>("Floor")
-                        .HasColumnType("integer")
-                        .HasColumnName("floor");
-
                     b.Property<Guid>("LocationId")
                         .HasColumnType("uuid")
                         .HasColumnName("location_id");
-
-                    b.Property<string>("Name")
-                        .IsRequired()
-                        .HasMaxLength(500)
-                        .HasColumnType("character varying(500)")
-                        .HasColumnName("name");
 
                     b.Property<Guid>("ObjectTypeId")
                         .HasColumnType("uuid")
                         .HasColumnName("object_type_id");
 
-                    b.Property<string>("RoomNumber")
-                        .HasMaxLength(50)
-                        .HasColumnType("character varying(50)")
-                        .HasColumnName("room_number");
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("title");
 
                     b.Property<DateTimeOffset>("UpdatedAt")
                         .HasColumnType("timestamp with time zone")
@@ -164,9 +188,9 @@ namespace persistence.Migrations
 
                     b.HasIndex("LocationId");
 
-                    b.HasIndex("Name");
-
                     b.HasIndex("ObjectTypeId");
+
+                    b.HasIndex("Title");
 
                     b.ToTable("university_object", (string)null);
                 });
@@ -187,11 +211,11 @@ namespace persistence.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("created_at");
 
-                    b.Property<string>("NameUk")
+                    b.Property<string>("TitleUk")
                         .IsRequired()
                         .HasMaxLength(100)
                         .HasColumnType("character varying(100)")
-                        .HasColumnName("name_uk");
+                        .HasColumnName("title_uk");
 
                     b.Property<DateTimeOffset>("UpdatedAt")
                         .HasColumnType("timestamp with time zone")
