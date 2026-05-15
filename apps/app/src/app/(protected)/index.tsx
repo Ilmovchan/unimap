@@ -269,6 +269,7 @@ export default function MapScreen() {
         followUserLocation={cameraFollowUser}
         onStopFollowingUser={() => setCameraFollowUser(false)}
         routeFeature={routeFeature}
+        selectedLocationId={selectedLocationId}
         onMarkerPress={(locationId) => {
           clearRoute();
           setSelectedLocationId(locationId);
@@ -300,7 +301,10 @@ export default function MapScreen() {
           />
         }
         accessibilityLabel="Усі відділення"
-        onPress={() => router.push("/locations")}
+        onPress={() => {
+          setSelectedLocationId(null);
+          router.push("/locations");
+        }}
       />
 
       <LayoutButton

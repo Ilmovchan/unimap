@@ -2,7 +2,10 @@ import {
   fetchLocations,
   type LocationMapDto,
 } from "@/src/features/api/locationsClient";
-import { groupLocationsByType } from "@/src/features/locations/groupLocationsByType";
+import {
+  groupLocationsByType,
+  type LocationTypeGroup,
+} from "@/src/features/locations/groupLocationsByType";
 import LocationSummaryCard from "@/src/features/locations/LocationSummaryCard";
 import { globalColors } from "@/src/styles/styles";
 import { Ionicons } from "@expo/vector-icons";
@@ -12,11 +15,13 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   RefreshControl,
-  ScrollView,
+  SectionList,
   StyleSheet,
   Text,
   View,
 } from "react-native";
+
+type LocationSection = LocationTypeGroup & { data: LocationMapDto[] };
 
 export default function LocationsScreen() {
   const router = useRouter();
@@ -45,12 +50,24 @@ export default function LocationsScreen() {
     void load(false);
   }, [load]);
 
-  const groups = useMemo(
-    () => groupLocationsByType(locations),
+  const sections = useMemo<LocationSection[]>(
+    () =>
+      groupLocationsByType(locations).map((group) => ({
+        ...group,
+        data: group.items,
+      })),
     [locations],
   );
 
-  const totalCount = locations.length;
+  const openOnMap = useCallback(
+    (id: string) => {
+      router.replace({
+        pathname: "/",
+        params: { focusLocation: id },
+      });
+    },
+    [router],
+  );
 
   if (loading && locations.length === 0) {
     return (
@@ -62,9 +79,13 @@ export default function LocationsScreen() {
   }
 
   return (
-    <ScrollView
+    <SectionList
       style={styles.screen}
       contentContainerStyle={styles.scrollContent}
+      sections={sections}
+      keyExtractor={(item) => item.id}
+      stickySectionHeadersEnabled={false}
+      contentInsetAdjustmentBehavior="automatic"
       refreshControl={
         <RefreshControl
           refreshing={refreshing}
@@ -72,38 +93,30 @@ export default function LocationsScreen() {
           tintColor={globalColors.accent}
         />
       }
-    >
-      {error && totalCount === 0 ? (
-        <Text style={styles.empty}>{error}</Text>
-      ) : totalCount === 0 ? (
-        <Text style={styles.empty}>Локацій поки немає.</Text>
-      ) : (
-        groups.map((group) => (
-          <View key={group.key} style={styles.section}>
-            <View style={styles.sectionHeader}>
-              <Ionicons
-                name={group.icon}
-                size={18}
-                color={globalColors.accent}
-              />
-              <Text style={styles.sectionTitle}>{group.title}</Text>
-            </View>
-            {group.items.map((loc) => (
-              <LocationSummaryCard
-                key={loc.id}
-                location={loc}
-                onPress={() =>
-                  router.replace({
-                    pathname: "/",
-                    params: { focusLocation: loc.id },
-                  })
-                }
-              />
-            ))}
-          </View>
-        ))
+      renderSectionHeader={({ section }) => (
+        <View style={styles.sectionHeader}>
+          <Ionicons
+            name={section.icon}
+            size={18}
+            color={globalColors.accent}
+          />
+          <Text style={styles.sectionTitle}>{section.title}</Text>
+        </View>
       )}
-    </ScrollView>
+      renderItem={({ item }) => (
+        <LocationSummaryCard
+          location={item}
+          onPress={() => openOnMap(item.id)}
+        />
+      )}
+      ListEmptyComponent={
+        error ? (
+          <Text style={styles.empty}>{error}</Text>
+        ) : (
+          <Text style={styles.empty}>Локацій поки немає.</Text>
+        )
+      }
+    />
   );
 }
 
@@ -116,9 +129,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingTop: 8,
     paddingBottom: 32,
-  },
-  section: {
-    marginBottom: 8,
   },
   sectionHeader: {
     flexDirection: "row",

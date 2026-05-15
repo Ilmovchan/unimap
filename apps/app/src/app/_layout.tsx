@@ -1,4 +1,5 @@
 import { Stack } from "expo-router";
+import { enableFreeze } from "react-native-screens";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { globalColors } from "../styles/styles";
@@ -13,6 +14,7 @@ SplashScreen.setOptions({
 });
 
 SplashScreen.preventAutoHideAsync();
+enableFreeze(true);
 
 const RootStack = () => {
   useEffect(() => {

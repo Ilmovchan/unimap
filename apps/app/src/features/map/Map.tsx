@@ -14,9 +14,16 @@ import {
   type OnPressEvent,
 } from "@maplibre/maplibre-react-native";
 import * as Location from "expo-location";
-import React, { useCallback, useMemo, useRef } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { InteractionManager, View } from "react-native";
+import { resolveMarkerKeyForMap } from "@/src/features/api/locationsClient";
 import type { RouteLineFeature } from "./mapRouteStore";
+import {
+  createSelectedMarkerStyles,
+  createUnselectedMarkerStyles,
+  MARKER_SELECTION_ANIM_MS,
+  SELECTED_MARKER_TARGET_SCALE,
+} from "./mapMarkerImages";
 import {
   focusCameraLikeNavigateButton,
   focusCameraToFitBounds,
@@ -51,6 +58,10 @@ const CLUSTER_FIT_PADDING = {
 
 const CLUSTER_BOUNDS_MARGIN_RATIO = 0.22;
 const CLUSTER_MIN_SPAN_DEG = 0.0009;
+
+function easeOutCubic(t: number): number {
+  return 1 - (1 - t) ** 3;
+}
 
 function isClusterFeature(feature: GeoJSON.Feature): boolean {
   const props = feature.properties as
@@ -150,6 +161,7 @@ type Props = {
   onStopFollowingUser?: () => void;
   onMarkerPress?: (id: string) => void;
   routeFeature?: RouteLineFeature | null;
+  selectedLocationId?: string | null;
 };
 
 const Map = ({
@@ -160,9 +172,77 @@ const Map = ({
   onStopFollowingUser,
   onMarkerPress,
   routeFeature = null,
+  selectedLocationId = null,
 }: Props) => {
   const apiUrl = process.env.EXPO_PUBLIC_MAP_RENDER_API_LINK;
   const shapeSourceRef = useRef<ShapeSourceRef>(null);
+  const selectedScaleRef = useRef(1);
+  const [selectedScale, setSelectedScale] = useState(1);
+  const highlightedIdRef = useRef<string | null>(null);
+  /** Залишається на шарі «вибраний» під час анімації згортання після dismiss. */
+  const [highlightedLocationId, setHighlightedLocationId] = useState<
+    string | null
+  >(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    let raf = 0;
+
+    const runScaleAnimation = (to: number, onComplete?: () => void) => {
+      const from = selectedScaleRef.current;
+      const start = performance.now();
+
+      const tick = (now: number) => {
+        if (cancelled) return;
+        const t = Math.min(1, (now - start) / MARKER_SELECTION_ANIM_MS);
+        const next = from + (to - from) * easeOutCubic(t);
+        selectedScaleRef.current = next;
+        setSelectedScale(next);
+        if (t < 1) {
+          raf = requestAnimationFrame(tick);
+          return;
+        }
+        selectedScaleRef.current = to;
+        setSelectedScale(to);
+        onComplete?.();
+      };
+
+      raf = requestAnimationFrame(tick);
+    };
+
+    if (selectedLocationId) {
+      highlightedIdRef.current = selectedLocationId;
+      setHighlightedLocationId(selectedLocationId);
+      runScaleAnimation(SELECTED_MARKER_TARGET_SCALE);
+    } else if (highlightedIdRef.current) {
+      runScaleAnimation(1, () => {
+        if (!cancelled) {
+          highlightedIdRef.current = null;
+          setHighlightedLocationId(null);
+        }
+      });
+    } else {
+      selectedScaleRef.current = 1;
+      setSelectedScale(1);
+    }
+
+    return () => {
+      cancelled = true;
+      cancelAnimationFrame(raf);
+    };
+  }, [selectedLocationId]);
+
+  const selectionActive = highlightedLocationId !== null;
+
+  const unselectedMarkerStyles = useMemo(
+    () => createUnselectedMarkerStyles(selectionActive),
+    [selectionActive],
+  );
+
+  const selectedMarkerStyles = useMemo(
+    () => createSelectedMarkerStyles(selectedScale),
+    [selectedScale],
+  );
 
   const shape = useMemo<GeoJSON.FeatureCollection>(
     () => ({
@@ -175,11 +255,12 @@ const Map = ({
         },
         properties: {
           id: m.id,
-          markerKey: (m.markerKey?.trim() || "building").toLowerCase(),
+          markerKey: resolveMarkerKeyForMap(m.markerKey),
+          selected: m.id === highlightedLocationId ? 1 : 0,
         },
       })),
     }),
-    [markers],
+    [markers, highlightedLocationId],
   );
 
   const handleShapePress = useCallback(
@@ -224,50 +305,49 @@ const Map = ({
     [cameraRef, onMarkerPress, onStopFollowingUser],
   );
 
-  /** Зовнішнє м’яке «світіння» під кластером (трохи більший радіус). */
+  /** М’яка тінь під кластером — як у FAB. */
   const clusterHaloStyle = useMemo(
     (): CircleLayerStyle => ({
       circleRadius: [
         "step",
         ["get", "point_count"],
-        26,
+        27,
         8,
-        29,
+        30,
         16,
-        32,
+        33,
         40,
-        36,
+        37,
         100,
-        40,
+        41,
       ] as unknown as CircleLayerStyle["circleRadius"],
-      circleColor: "rgba(79, 70, 229, 0.38)",
+      circleColor: "rgba(46, 45, 43, 0.14)",
       circleOpacity: 1,
-      circleBlur: 0.85,
+      circleBlur: 0.55,
       circlePitchAlignment: "map",
     }),
     [],
   );
 
-  /** Компактний «діск» кластера. */
+  /** Кластер у стилі круглих кнопок над картою. */
   const clusterHullStyle = useMemo(
     (): CircleLayerStyle => ({
       circleRadius: [
         "step",
         ["get", "point_count"],
-        19,
+        21,
         8,
-        22,
+        24,
         16,
-        25,
+        27,
         40,
-        29,
+        31,
         100,
-        33,
+        35,
       ] as unknown as CircleLayerStyle["circleRadius"],
-      circleColor: "#3730A3",
+      circleColor: globalColors.navigationFabBg,
       circleOpacity: 1,
-      circleStrokeWidth: 2.25,
-      circleStrokeColor: "rgba(255, 255, 255, 0.88)",
+      circleStrokeWidth: 0,
       circlePitchAlignment: "map",
     }),
     [],
@@ -276,39 +356,13 @@ const Map = ({
   const clusterCountStyle = useMemo(
     () => ({
       textField: ["to-string", ["get", "point_count"]] as unknown as string,
-      textSize: 13,
-      textColor: "#FAFAF9",
-      textHaloColor: "rgba(15, 23, 42, 0.42)",
-      textHaloWidth: 1.75,
+      textSize: 15,
+      textFont: ["Open Sans Semibold", "Arial Unicode MS Regular"],
+      textColor: globalColors.navigationFabIcon,
+      textHaloColor: "rgba(254, 254, 254, 0.85)",
+      textHaloWidth: 1.25,
       textAllowOverlap: true,
       textIgnorePlacement: true,
-    }),
-    [],
-  );
-
-  /** Некластеризовані точки: колір за `markerKey` (узгоджено з API / `resolveMarkerKeyForMap`). */
-  const pointMarkerStyle = useMemo(
-    (): CircleLayerStyle => ({
-      circleRadius: 9,
-      circleColor: [
-        "match",
-        ["get", "markerKey"],
-        "library",
-        "#0d9488",
-        "stadium",
-        "#16a34a",
-        "admin",
-        "#64748b",
-        "default",
-        "#78716c",
-        "info",
-        "#0284c7",
-        "#4f46e5",
-      ] as unknown as CircleLayerStyle["circleColor"],
-      circleOpacity: 1,
-      circleStrokeWidth: 2.25,
-      circleStrokeColor: "rgba(255, 255, 255, 0.92)",
-      circlePitchAlignment: "map",
     }),
     [],
   );
@@ -376,8 +430,8 @@ const Map = ({
             id={CLUSTER_SOURCE_ID}
             shape={shape}
             cluster
-            clusterRadius={56}
-            clusterMaxZoomLevel={16}
+            clusterRadius={48}
+            clusterMaxZoomLevel={14}
             clusterMinPoints={2}
             hitbox={{ width: 48, height: 48 }}
             onPress={handleShapePress}
@@ -397,10 +451,99 @@ const Map = ({
               filter={["has", "point_count"]}
               style={clusterCountStyle}
             />
-            <CircleLayer
-              id={`${CLUSTER_SOURCE_ID}-point-marker`}
-              filter={["!", ["has", "point_count"]]}
-              style={pointMarkerStyle}
+            <SymbolLayer
+              id={`${CLUSTER_SOURCE_ID}-point-building`}
+              filter={[
+                "all",
+                ["!", ["has", "point_count"]],
+                ["==", ["get", "selected"], 0],
+                [
+                  "!",
+                  [
+                    "in",
+                    ["get", "markerKey"],
+                    ["literal", ["library", "stadium", "dormitory"]],
+                  ],
+                ],
+              ]}
+              style={unselectedMarkerStyles.building}
+            />
+            <SymbolLayer
+              id={`${CLUSTER_SOURCE_ID}-point-library`}
+              filter={[
+                "all",
+                ["!", ["has", "point_count"]],
+                ["==", ["get", "selected"], 0],
+                ["==", ["get", "markerKey"], "library"],
+              ]}
+              style={unselectedMarkerStyles.library}
+            />
+            <SymbolLayer
+              id={`${CLUSTER_SOURCE_ID}-point-stadium`}
+              filter={[
+                "all",
+                ["!", ["has", "point_count"]],
+                ["==", ["get", "selected"], 0],
+                ["==", ["get", "markerKey"], "stadium"],
+              ]}
+              style={unselectedMarkerStyles.stadium}
+            />
+            <SymbolLayer
+              id={`${CLUSTER_SOURCE_ID}-point-dormitory`}
+              filter={[
+                "all",
+                ["!", ["has", "point_count"]],
+                ["==", ["get", "selected"], 0],
+                ["==", ["get", "markerKey"], "dormitory"],
+              ]}
+              style={unselectedMarkerStyles.dormitory}
+            />
+            <SymbolLayer
+              id={`${CLUSTER_SOURCE_ID}-point-building-selected`}
+              filter={[
+                "all",
+                ["!", ["has", "point_count"]],
+                ["==", ["get", "selected"], 1],
+                [
+                  "!",
+                  [
+                    "in",
+                    ["get", "markerKey"],
+                    ["literal", ["library", "stadium", "dormitory"]],
+                  ],
+                ],
+              ]}
+              style={selectedMarkerStyles.building}
+            />
+            <SymbolLayer
+              id={`${CLUSTER_SOURCE_ID}-point-library-selected`}
+              filter={[
+                "all",
+                ["!", ["has", "point_count"]],
+                ["==", ["get", "selected"], 1],
+                ["==", ["get", "markerKey"], "library"],
+              ]}
+              style={selectedMarkerStyles.library}
+            />
+            <SymbolLayer
+              id={`${CLUSTER_SOURCE_ID}-point-stadium-selected`}
+              filter={[
+                "all",
+                ["!", ["has", "point_count"]],
+                ["==", ["get", "selected"], 1],
+                ["==", ["get", "markerKey"], "stadium"],
+              ]}
+              style={selectedMarkerStyles.stadium}
+            />
+            <SymbolLayer
+              id={`${CLUSTER_SOURCE_ID}-point-dormitory-selected`}
+              filter={[
+                "all",
+                ["!", ["has", "point_count"]],
+                ["==", ["get", "selected"], 1],
+                ["==", ["get", "markerKey"], "dormitory"],
+              ]}
+              style={selectedMarkerStyles.dormitory}
             />
           </ShapeSource>
         ) : null}

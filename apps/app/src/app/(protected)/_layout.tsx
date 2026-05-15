@@ -9,7 +9,10 @@ const ProtectedLayout = () => {
         headerShadowVisible: false,
       }}
     >
-      <Stack.Screen name="index" options={{ headerShown: false }} />
+      <Stack.Screen
+        name="index"
+        options={{ headerShown: false, freezeOnBlur: true }}
+      />
       <Stack.Screen
         name="locations"
         options={{
@@ -17,6 +20,8 @@ const ProtectedLayout = () => {
           headerTintColor: globalColors.title,
           headerStyle: { backgroundColor: globalColors.background },
           headerBackButtonDisplayMode: "minimal",
+          freezeOnBlur: true,
+          fullScreenGestureEnabled: false,
         }}
       />
       <Stack.Screen

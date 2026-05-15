@@ -45,6 +45,7 @@ export type LocationDetailDto = LocationMapDto;
 
 const CANONICAL_MARKER_KEYS = new Set([
   "building",
+  "dormitory",
   "library",
   "stadium",
   "admin",
@@ -83,8 +84,36 @@ function normalizeApiMarkerKey(raw: string | null | undefined): string | null {
   if (!t) return null;
   const lower = t.toLowerCase();
   if (lower === "uni") return "building";
-  if (!CANONICAL_MARKER_KEYS.has(lower)) return null;
-  return lower;
+  if (CANONICAL_MARKER_KEYS.has(lower)) return lower;
+
+  const withoutMarkerSuffix = lower.replace(/_marker$/, "");
+  if (CANONICAL_MARKER_KEYS.has(withoutMarkerSuffix)) return withoutMarkerSuffix;
+
+  if (withoutMarkerSuffix.includes("library")) return "library";
+  if (
+    withoutMarkerSuffix.includes("stadium") ||
+    withoutMarkerSuffix.includes("sport")
+  )
+    return "stadium";
+  if (
+    withoutMarkerSuffix.includes("dormitory") ||
+    withoutMarkerSuffix.includes("dorm")
+  )
+    return "dormitory";
+  if (
+    withoutMarkerSuffix.includes("building") ||
+    withoutMarkerSuffix.includes("uni")
+  )
+    return "building";
+  if (withoutMarkerSuffix.includes("admin")) return "admin";
+  if (withoutMarkerSuffix.includes("info")) return "info";
+  if (
+    withoutMarkerSuffix.includes("default") ||
+    withoutMarkerSuffix.includes("other")
+  )
+    return "default";
+
+  return null;
 }
 
 /** Відображення маркера за кодом типу (stadium, dormitory, library, building, other). */
@@ -99,7 +128,7 @@ function markerKeyFromLocationTypeCode(
     case "stadium":
       return "stadium";
     case "dormitory":
-      return "building";
+      return "dormitory";
     case "building":
       return "building";
     case "other":
@@ -107,7 +136,7 @@ function markerKeyFromLocationTypeCode(
     default:
       if (c.includes("library")) return "library";
       if (c.includes("stadium") || c.includes("sport")) return "stadium";
-      if (c.includes("dorm")) return "building";
+      if (c.includes("dorm")) return "dormitory";
       if (c.includes("building")) return "building";
       if (c === "other" || c.includes("misc")) return "default";
       return null;
@@ -124,7 +153,7 @@ export function markerKeyFromLocationTypeTitle(
     return "stadium";
   if (t.includes("адмін")) return "admin";
   if (t.includes("інш")) return "default";
-  if (t.includes("гуртожит") || t.includes("dormitory")) return "building";
+  if (t.includes("гуртожит") || t.includes("dormitory")) return "dormitory";
   if (
     t.includes("будівл") ||
     t.includes("будивл") ||

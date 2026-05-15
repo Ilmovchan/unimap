@@ -62,15 +62,7 @@ export function LocationDetailSections({
 
       {addressText ? (
         <View style={styles.card}>
-          <Text style={styles.sectionLabel}>Адреса</Text>
           <Text style={styles.bodyText}>{addressText}</Text>
-        </View>
-      ) : null}
-
-      {location.description?.trim() ? (
-        <View style={styles.card}>
-          <Text style={styles.sectionLabel}>Опис</Text>
-          <Text style={styles.bodyText}>{location.description.trim()}</Text>
         </View>
       ) : null}
 
