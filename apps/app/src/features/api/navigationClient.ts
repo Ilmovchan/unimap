@@ -86,7 +86,7 @@ export type NavigationRouteParams = {
 };
 
 /**
- * GET …/navigation/route — той самий префікс, що й `/departments`
+ * GET …/navigation/route — той самий базовий URL, що й `/locations`
  * (якщо base = `https://host/api`, шлях буде `https://host/api/navigation/route`).
  */
 export async function fetchNavigationRoute(

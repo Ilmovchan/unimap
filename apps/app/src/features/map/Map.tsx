@@ -26,26 +26,22 @@ export type MapMarkerPoint = {
   id: string;
   lat: number;
   lng: number;
+  /** Ключ маркера з API (building, library, stadium, …). */
+  markerKey?: string;
 };
 
-const CLUSTER_SOURCE_ID = "departmentMarkers";
+const CLUSTER_SOURCE_ID = "locationMarkers";
 const ROUTE_SOURCE_ID = "navigationRoute";
 const CLUSTER_LEAVES_PAGE_SIZE = 2000;
 
-/**
- * Камера не виходить за межі Одеси та найближчих околиць.
- * Координати [lng, lat] у форматі MapLibre (NE / SW).
- */
 const ODESA_MAX_BOUNDS = {
   ne: [30.98, 46.66] as [number, number],
   sw: [30.4, 46.34] as [number, number],
 };
 
-/** Мінімальний рівень зуму (не віддалятись далі — інакше видно територію за межами міста). */
 const MAP_MIN_ZOOM_LEVEL = 10;
 const MAP_MAX_ZOOM_LEVEL = 20;
 
-/** Відступи від країв екрана, щоб маркери кластера не ховались під кнопками / атрибуцією. */
 const CLUSTER_FIT_PADDING = {
   paddingTop: 120,
   paddingBottom: 180,
@@ -53,7 +49,6 @@ const CLUSTER_FIT_PADDING = {
   paddingRight: 40,
 } as const;
 
-/** Запас навколо bbox (частка від розміру), щоб точки не прилипали до краю кадру. */
 const CLUSTER_BOUNDS_MARGIN_RATIO = 0.22;
 const CLUSTER_MIN_SPAN_DEG = 0.0009;
 
@@ -178,20 +173,13 @@ const Map = ({
           type: "Point",
           coordinates: [m.lng, m.lat],
         },
-        properties: { id: m.id },
+        properties: {
+          id: m.id,
+          markerKey: (m.markerKey?.trim() || "building").toLowerCase(),
+        },
       })),
     }),
     [markers],
-  );
-
-  const bubbleStyleShared = useMemo(
-    () => ({
-      circleColor: globalColors.surface,
-      circleOpacity: 1,
-      circleStrokeWidth: 1.5,
-      circleStrokeColor: globalColors.border as string,
-    }),
-    [],
   );
 
   const handleShapePress = useCallback(
@@ -236,51 +224,91 @@ const Map = ({
     [cameraRef, onMarkerPress, onStopFollowingUser],
   );
 
-  const clusterHullStyle = useMemo(
+  /** Зовнішнє м’яке «світіння» під кластером (трохи більший радіус). */
+  const clusterHaloStyle = useMemo(
     (): CircleLayerStyle => ({
-      ...bubbleStyleShared,
       circleRadius: [
         "step",
         ["get", "point_count"],
-        28,
+        26,
         8,
-        32,
+        29,
         16,
-        36,
+        32,
         40,
-        44,
+        36,
         100,
-        50,
+        40,
       ] as unknown as CircleLayerStyle["circleRadius"],
+      circleColor: "rgba(79, 70, 229, 0.38)",
+      circleOpacity: 1,
+      circleBlur: 0.85,
+      circlePitchAlignment: "map",
     }),
-    [bubbleStyleShared],
+    [],
+  );
+
+  /** Компактний «діск» кластера. */
+  const clusterHullStyle = useMemo(
+    (): CircleLayerStyle => ({
+      circleRadius: [
+        "step",
+        ["get", "point_count"],
+        19,
+        8,
+        22,
+        16,
+        25,
+        40,
+        29,
+        100,
+        33,
+      ] as unknown as CircleLayerStyle["circleRadius"],
+      circleColor: "#3730A3",
+      circleOpacity: 1,
+      circleStrokeWidth: 2.25,
+      circleStrokeColor: "rgba(255, 255, 255, 0.88)",
+      circlePitchAlignment: "map",
+    }),
+    [],
   );
 
   const clusterCountStyle = useMemo(
     () => ({
       textField: ["to-string", ["get", "point_count"]] as unknown as string,
-      textSize: 16,
-      textColor: globalColors.navigationFabIcon,
+      textSize: 13,
+      textColor: "#FAFAF9",
+      textHaloColor: "rgba(15, 23, 42, 0.42)",
+      textHaloWidth: 1.75,
       textAllowOverlap: true,
       textIgnorePlacement: true,
     }),
     [],
   );
 
-  const unclusteredHullStyle = useMemo(
-    () => ({
-      ...bubbleStyleShared,
-      circleRadius: 26,
-    }),
-    [bubbleStyleShared],
-  );
-
-  const unclusteredCoreStyle = useMemo(
-    () => ({
+  /** Некластеризовані точки: колір за `markerKey` (узгоджено з API / `resolveMarkerKeyForMap`). */
+  const pointMarkerStyle = useMemo(
+    (): CircleLayerStyle => ({
       circleRadius: 9,
-      circleColor: globalColors.accent,
+      circleColor: [
+        "match",
+        ["get", "markerKey"],
+        "library",
+        "#0d9488",
+        "stadium",
+        "#16a34a",
+        "admin",
+        "#64748b",
+        "default",
+        "#78716c",
+        "info",
+        "#0284c7",
+        "#4f46e5",
+      ] as unknown as CircleLayerStyle["circleColor"],
       circleOpacity: 1,
-      circlePitchAlignment: "map" as const,
+      circleStrokeWidth: 2.25,
+      circleStrokeColor: "rgba(255, 255, 255, 0.92)",
+      circlePitchAlignment: "map",
     }),
     [],
   );
@@ -342,7 +370,7 @@ const Map = ({
           />
         )}
 
-        {markers.length > 0 && (
+        {markers.length > 0 ? (
           <ShapeSource
             ref={shapeSourceRef}
             id={CLUSTER_SOURCE_ID}
@@ -351,9 +379,14 @@ const Map = ({
             clusterRadius={56}
             clusterMaxZoomLevel={16}
             clusterMinPoints={2}
-            hitbox={{ width: 72, height: 72 }}
+            hitbox={{ width: 48, height: 48 }}
             onPress={handleShapePress}
           >
+            <CircleLayer
+              id={`${CLUSTER_SOURCE_ID}-cluster-halo`}
+              filter={["has", "point_count"]}
+              style={clusterHaloStyle}
+            />
             <CircleLayer
               id={`${CLUSTER_SOURCE_ID}-cluster`}
               filter={["has", "point_count"]}
@@ -365,17 +398,12 @@ const Map = ({
               style={clusterCountStyle}
             />
             <CircleLayer
-              id={`${CLUSTER_SOURCE_ID}-point-hull`}
+              id={`${CLUSTER_SOURCE_ID}-point-marker`}
               filter={["!", ["has", "point_count"]]}
-              style={unclusteredHullStyle}
-            />
-            <CircleLayer
-              id={`${CLUSTER_SOURCE_ID}-point-core`}
-              filter={["!", ["has", "point_count"]]}
-              style={unclusteredCoreStyle}
+              style={pointMarkerStyle}
             />
           </ShapeSource>
-        )}
+        ) : null}
 
         {routeShape ? (
           <ShapeSource id={ROUTE_SOURCE_ID} shape={routeShape}>

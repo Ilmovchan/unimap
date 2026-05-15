@@ -1,10 +1,8 @@
 /Users/user/unimap/apps/server/infrastructure/bin/Debug/net9.0/infrastructure.deps.json
 /Users/user/unimap/apps/server/infrastructure/bin/Debug/net9.0/infrastructure.dll
 /Users/user/unimap/apps/server/infrastructure/bin/Debug/net9.0/infrastructure.pdb
-/Users/user/unimap/apps/server/infrastructure/bin/Debug/net9.0/app.dll
 /Users/user/unimap/apps/server/infrastructure/bin/Debug/net9.0/domain.dll
 /Users/user/unimap/apps/server/infrastructure/bin/Debug/net9.0/persistence.dll
-/Users/user/unimap/apps/server/infrastructure/bin/Debug/net9.0/app.pdb
 /Users/user/unimap/apps/server/infrastructure/bin/Debug/net9.0/domain.pdb
 /Users/user/unimap/apps/server/infrastructure/bin/Debug/net9.0/persistence.pdb
 /Users/user/unimap/apps/server/infrastructure/obj/Debug/net9.0/infrastructure.csproj.AssemblyReference.cache

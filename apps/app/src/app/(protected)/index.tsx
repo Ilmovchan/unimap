@@ -1,5 +1,5 @@
-import type { DepartmentDto } from "@/src/features/api/departmentsClient";
-import { fetchDepartments } from "@/src/features/api/departmentsClient";
+import type { LocationMapDto } from "@/src/features/api/locationsClient";
+import { fetchLocations } from "@/src/features/api/locationsClient";
 import { useLocation } from "@/src/features/core/location/stores/LocationProvider";
 import Map, {
   focusCameraLikeNavigateButton,
@@ -8,7 +8,7 @@ import Map, {
   useMapRouteStore,
   type MapMarkerPoint,
 } from "@/src/features/map/";
-import DepartmentMapPreviewSheet from "@/src/features/map/DepartmentMapPreviewSheet";
+import LocationMapPreviewSheet from "@/src/features/map/LocationMapPreviewSheet";
 import LayoutButton from "@/src/features/map/components/LayoutButton";
 import { globalColors } from "@/src/styles/styles";
 import { Ionicons } from "@expo/vector-icons";
@@ -19,7 +19,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { InteractionManager, StyleSheet, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-function focusDepartmentParam(
+function focusLocationParam(
   raw: string | string[] | undefined,
 ): string | undefined {
   if (typeof raw === "string" && raw.length > 0) return raw;
@@ -31,18 +31,17 @@ function focusDepartmentParam(
 
 export default function MapScreen() {
   const router = useRouter();
-  const { focusDepartment: focusDepartmentRaw } = useLocalSearchParams<{
-    focusDepartment?: string | string[];
+  const { focusLocation: focusLocationRaw } = useLocalSearchParams<{
+    focusLocation?: string | string[];
   }>();
   const insets = useSafeAreaInsets();
   const cameraRef = useRef<CameraRef | null>(null);
   const location = useLocation().location;
   const [markers, setMarkers] = useState<MapMarkerPoint[]>([]);
-  const [departments, setDepartments] = useState<DepartmentDto[]>([]);
-  const [selectedDepartmentId, setSelectedDepartmentId] = useState<
-    string | null
-  >(null);
-  /** Перший кадр false — щоб Camera застосував maxBounds (обмеження @maplibre при follow одразу). */
+  const [locations, setLocations] = useState<LocationMapDto[]>([]);
+  const [selectedLocationId, setSelectedLocationId] = useState<string | null>(
+    null,
+  );
   const [cameraFollowUser, setCameraFollowUser] = useState(false);
 
   useEffect(() => {
@@ -60,7 +59,7 @@ export default function MapScreen() {
     let cancelled = false;
     (async () => {
       try {
-        const list = await fetchDepartments();
+        const list = await fetchLocations();
         if (cancelled) return;
 
         const next: MapMarkerPoint[] = list
@@ -74,12 +73,13 @@ export default function MapScreen() {
             id: d.id,
             lat: d.lat,
             lng: d.lng,
+            markerKey: d.markerKey ?? "building",
           }));
 
         setMarkers(next);
-        setDepartments(list);
+        setLocations(list);
       } catch (e) {
-        log.warn("[UniMap] map markers load failed", e);
+        log.warn("[UniMap] map locations load failed", e);
       }
     })();
     return () => {
@@ -88,28 +88,23 @@ export default function MapScreen() {
   }, []);
 
   useEffect(() => {
-    const focusId = focusDepartmentParam(focusDepartmentRaw);
+    const focusId = focusLocationParam(focusLocationRaw);
     if (!focusId) return;
 
-    const dept = departments.find((d) => d.id === focusId);
-    if (
-      !dept ||
-      !Number.isFinite(dept.lat) ||
-      !Number.isFinite(dept.lng)
-    ) {
+    const loc = locations.find((d) => d.id === focusId);
+    if (!loc || !Number.isFinite(loc.lat) || !Number.isFinite(loc.lng)) {
       return;
     }
 
-    const lng = dept.lng;
-    const lat = dept.lat;
+    const lng = loc.lng;
+    const lat = loc.lat;
 
     clearRoute();
     setRouteCameraImmersive(false);
-    setSelectedDepartmentId(focusId);
+    setSelectedLocationId(focusId);
     setCameraFollowUser(false);
-    router.setParams({ focusDepartment: undefined });
+    router.setParams({ focusLocation: undefined });
 
-    /** Після `followUserLocation={false}` на карті — інакше нативний follow перебиває setCamera. */
     const runFocus = (attempt: number) => {
       InteractionManager.runAfterInteractions(() => {
         if (!cameraRef.current && attempt < 12) {
@@ -125,7 +120,7 @@ export default function MapScreen() {
     };
 
     setTimeout(() => runFocus(0), 0);
-  }, [focusDepartmentRaw, departments, clearRoute, router]);
+  }, [focusLocationRaw, locations, clearRoute, router]);
 
   useEffect(() => {
     const coords = routeFeature?.geometry?.coordinates;
@@ -149,7 +144,6 @@ export default function MapScreen() {
     const isFirstFit = !hadRouteForCameraRef.current;
     hadRouteForCameraRef.current = true;
 
-    /** Оновлення полілінії при русі не повинно зривати кадр — лише перший показ і перемикач 3D. */
     if (!isFirstFit && !immersiveToggled) {
       return;
     }
@@ -166,29 +160,22 @@ export default function MapScreen() {
     }
   }, [routeFeature, routeCameraImmersive]);
 
-  /** Закрити маршрут і sheet, плавно показати обраний підрозділ на карті. */
   const handleRouteNavigationBack = useCallback(() => {
-    const deptId = selectedDepartmentId;
-    const dept =
-      deptId == null
-        ? undefined
-        : departments.find((d) => d.id === deptId);
+    const id = selectedLocationId;
+    const loc =
+      id == null ? undefined : locations.find((d) => d.id === id);
 
     clearRoute();
     setRouteCameraImmersive(false);
-    setSelectedDepartmentId(null);
+    setSelectedLocationId(null);
 
-    if (
-      !dept ||
-      !Number.isFinite(dept.lat) ||
-      !Number.isFinite(dept.lng)
-    ) {
+    if (!loc || !Number.isFinite(loc.lat) || !Number.isFinite(loc.lng)) {
       setCameraFollowUser(true);
-      const loc = locationRef.current;
-      if (loc) {
+      const cur = locationRef.current;
+      if (cur) {
         focusCameraLikeNavigateButton(
           cameraRef,
-          [loc.coords.longitude, loc.coords.latitude],
+          [cur.coords.longitude, cur.coords.latitude],
           "followUserLocation",
         );
       }
@@ -196,8 +183,8 @@ export default function MapScreen() {
     }
 
     setCameraFollowUser(false);
-    const lng = dept.lng;
-    const lat = dept.lat;
+    const lng = loc.lng;
+    const lat = loc.lat;
 
     const runFocus = (attempt: number) => {
       InteractionManager.runAfterInteractions(() => {
@@ -214,23 +201,23 @@ export default function MapScreen() {
     };
 
     setTimeout(() => runFocus(0), 0);
-  }, [clearRoute, departments, selectedDepartmentId]);
+  }, [clearRoute, locations, selectedLocationId]);
 
   const handleSheetClosed = useCallback(() => {
     if (useMapRouteStore.getState().routeFeature) {
       clearRoute();
       setRouteCameraImmersive(false);
       setCameraFollowUser(true);
-      const loc = locationRef.current;
-      if (loc) {
+      const cur = locationRef.current;
+      if (cur) {
         focusCameraLikeNavigateButton(
           cameraRef,
-          [loc.coords.longitude, loc.coords.latitude],
+          [cur.coords.longitude, cur.coords.latitude],
           "followUserLocation",
         );
       }
     }
-    setSelectedDepartmentId(null);
+    setSelectedLocationId(null);
   }, [clearRoute]);
 
   const toggleRouteCameraImmersive = useCallback(() => {
@@ -241,9 +228,9 @@ export default function MapScreen() {
     const coords = routeFeature?.geometry?.coordinates;
     const routeActive = Boolean(coords && coords.length >= 2);
     if (!routeActive) return markers;
-    if (!selectedDepartmentId) return [];
-    return markers.filter((m) => m.id === selectedDepartmentId);
-  }, [markers, routeFeature, selectedDepartmentId]);
+    if (!selectedLocationId) return markers;
+    return markers.filter((m) => m.id === selectedLocationId);
+  }, [markers, routeFeature, selectedLocationId]);
 
   if (!location) return null;
 
@@ -256,16 +243,16 @@ export default function MapScreen() {
         followUserLocation={cameraFollowUser}
         onStopFollowingUser={() => setCameraFollowUser(false)}
         routeFeature={routeFeature}
-        onMarkerPress={(departmentId) => {
+        onMarkerPress={(locationId) => {
           clearRoute();
-          setSelectedDepartmentId(departmentId);
+          setSelectedLocationId(locationId);
         }}
       />
 
       <View style={styles.sheetLayer} pointerEvents="box-none">
-        <DepartmentMapPreviewSheet
-          departmentId={selectedDepartmentId}
-          departments={departments}
+        <LocationMapPreviewSheet
+          locationId={selectedLocationId}
+          locations={locations}
           userLocation={location}
           routeCameraImmersive={routeCameraImmersive}
           onToggleRouteCameraImmersive={toggleRouteCameraImmersive}
@@ -273,24 +260,6 @@ export default function MapScreen() {
           onDismiss={handleSheetClosed}
         />
       </View>
-
-      <LayoutButton
-        style={{
-          top: insets.top + 12,
-          left: 16,
-          zIndex: 9999,
-        }}
-        label="Підрозділи"
-        icon={
-          <Ionicons
-            size={22}
-            name="school-outline"
-            color={globalColors.navigationFabIcon}
-          />
-        }
-        accessibilityLabel="Підрозділи: відкрити список"
-        onPress={() => router.push("/departments")}
-      />
 
       <LayoutButton
         style={{

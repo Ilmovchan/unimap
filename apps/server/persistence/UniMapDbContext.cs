@@ -1,16 +1,22 @@
+using domain.Entities;
 using Microsoft.EntityFrameworkCore;
-using Unimap.Domain.Entities;
 
 namespace persistence;
 
 public sealed class UniMapDbContext : DbContext
 {
-    public UniMapDbContext(DbContextOptions<UniMapDbContext> options) : base(options)
+    public UniMapDbContext(DbContextOptions<UniMapDbContext> options)
+        : base(options)
     {
-        Database.EnsureCreated();
     }
 
-    public DbSet<Department> Departments => Set<Department>();
+    public DbSet<LocationType> LocationTypes => Set<LocationType>();
+
+    public DbSet<Location> Locations => Set<Location>();
+
+    public DbSet<UniversityObjectType> UniversityObjectTypes => Set<UniversityObjectType>();
+
+    public DbSet<UniversityObject> UniversityObjects => Set<UniversityObject>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -34,24 +40,25 @@ public sealed class UniMapDbContext : DbContext
     {
         var now = DateTimeOffset.UtcNow;
 
-        foreach (var entry in ChangeTracker.Entries<Department>())
+        foreach (var entry in ChangeTracker.Entries<ITimestampedEntity>())
         {
             if (entry.State == EntityState.Added)
             {
-                if (entry.Entity.Id == Guid.Empty)
-                    entry.Entity.Id = Guid.NewGuid();
+                foreach (var p in entry.Properties)
+                {
+                    if (p.Metadata.Name == "Id" && p.CurrentValue is Guid g && g == Guid.Empty)
+                        p.CurrentValue = Guid.NewGuid();
+                }
 
                 if (entry.Entity.CreatedAt == default)
                     entry.Entity.CreatedAt = now;
 
                 entry.Entity.UpdatedAt = now;
             }
-
-            if (entry.State == EntityState.Modified)
+            else if (entry.State == EntityState.Modified)
             {
                 entry.Entity.UpdatedAt = now;
             }
         }
     }
 }
-

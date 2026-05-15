@@ -13,3 +13,5 @@
 /Users/user/unimap/apps/server/persistence/obj/Debug/net9.0/refint/persistence.dll
 /Users/user/unimap/apps/server/persistence/obj/Debug/net9.0/persistence.pdb
 /Users/user/unimap/apps/server/persistence/obj/Debug/net9.0/ref/persistence.dll
+/Users/user/unimap/apps/server/persistence/bin/Debug/net9.0/persistence.runtimeconfig.json
+/Users/user/unimap/apps/server/persistence/obj/Debug/net9.0/persistence.genruntimeconfig.cache

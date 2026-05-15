@@ -10,17 +10,6 @@ const ProtectedLayout = () => {
       }}
     >
       <Stack.Screen name="index" options={{ headerShown: false }} />
-      <Stack.Screen
-        name="departments"
-        options={{
-          title: "Підрозділи",
-          headerTintColor: globalColors.title,
-          headerStyle: {
-            backgroundColor: globalColors.background,
-          },
-          headerBackButtonDisplayMode: "minimal",
-        }}
-      />
     </Stack>
   );
 };

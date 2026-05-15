@@ -1,12 +1,13 @@
 using api.Endpoints;
 using app.Abstractions;
 using app.Services;
+using infrastructure.BackgroundServices;
 using infrastructure.GeoService;
 using infrastructure.RoutingService;
 using Microsoft.EntityFrameworkCore;
 using persistence;
+using persistence.Repositories;
 using Unimap.Domain.Abstractions;
-using Unimap.Persistence.Repositories;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -16,10 +17,11 @@ builder.Services.AddDbContextFactory<UniMapDbContext>(options =>
     options.UseNpgsql(connectionString);
 });
 
-builder.Services.AddScoped<IDepartmentRepository, DepartmentRepository>();
-builder.Services.AddScoped<IDepartmentService, DepartmentService>();
+builder.Services.AddScoped<ILocationRepository, LocationRepository>();
+builder.Services.AddScoped<ILocationService, LocationService>();
 builder.Services.AddScoped<IRoutingProvider, OpenRouteServiceRouter>();
 builder.Services.AddScoped<IGeoProvider, NominatimGeoService>();
+builder.Services.AddHostedService<LocationAddressJsonBackfillWorker>();
 
 builder.Services.AddSwaggerGen();
 builder.Services.AddEndpointsApiExplorer();
@@ -39,7 +41,7 @@ if (app.Environment.IsDevelopment())
     // }
 }
 
-app.MapDepartmentEndpoints();
+app.MapLocationEndpoints();
 app.MapNavigationEndpoints();
 
 app.Run();
