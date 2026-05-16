@@ -20,6 +20,8 @@ public sealed class UniMapDbContext : DbContext
 
     public DbSet<News> News => Set<News>();
 
+    public DbSet<Admin> Admins => Set<Admin>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(UniMapDbContext).Assembly);

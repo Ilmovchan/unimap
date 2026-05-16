@@ -1,3 +1,4 @@
+using api.AdminEndpoints;
 using api.Endpoints;
 using app.Abstractions;
 using app.Services;
@@ -25,6 +26,17 @@ builder.Services.AddScoped<IRoutingProvider, OpenRouteServiceRouter>();
 builder.Services.AddScoped<IGeoProvider, NominatimGeoService>();
 builder.Services.AddHostedService<LocationAddressJsonBackfillWorker>();
 
+builder.Services.AddCors(options =>
+{
+    options.AddDefaultPolicy(policy =>
+        policy
+            .WithOrigins(
+                "http://localhost:5173",
+                "http://127.0.0.1:5173")
+            .AllowAnyHeader()
+            .AllowAnyMethod());
+});
+
 builder.Services.AddSwaggerGen();
 builder.Services.AddEndpointsApiExplorer();
 
@@ -38,13 +50,17 @@ if (app.Environment.IsDevelopment())
     using (var scope = app.Services.CreateScope())
     {
         var dbContextFactory = scope.ServiceProvider.GetRequiredService<IDbContextFactory<UniMapDbContext>>();
-        using var db = dbContextFactory.CreateDbContext();
-        db.Database.Migrate();
+        await using var db = await dbContextFactory.CreateDbContextAsync();
+        await db.Database.MigrateAsync();
+        await db.EnsureAdminsTableAsync();
     }
 }
+
+app.UseCors();
 
 app.MapLocationEndpoints();
 app.MapNewsEndpoints();
 app.MapNavigationEndpoints();
+app.MapAdminEndpoints();
 
 app.Run();
