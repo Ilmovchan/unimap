@@ -3,7 +3,7 @@ using infrastructure.Dto;
 
 namespace infrastructure.RoutingService;
 
-public class OpenRouteServiceRouter : IRoutingProvider
+public class OpenRouteServiceRoutingProvider : IRoutingProvider
 {
     private static readonly HttpClient HttpClient = new();
 

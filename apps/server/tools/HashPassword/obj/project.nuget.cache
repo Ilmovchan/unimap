@@ -1,0 +1,10 @@
+{
+  "version": 2,
+  "dgSpecHash": "7GLZ6yC2m0I=",
+  "success": true,
+  "projectFilePath": "/Users/user/unimap/apps/server/tools/HashPassword/HashPassword.csproj",
+  "expectedPackageFiles": [
+    "/var/folders/zc/lplv4yfn3nv6q0bg0xlnvzm80000gp/T/cursor-sandbox-cache/c21ad66f6ffb9384de969771f25bd74b/nuget/bcrypt.net-next/4.0.3/bcrypt.net-next.4.0.3.nupkg.sha512"
+  ],
+  "logs": []
+}

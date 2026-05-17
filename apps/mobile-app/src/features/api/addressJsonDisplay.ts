@@ -40,10 +40,40 @@ const CITY_KEYS = [
   "gorod",
 ];
 
+const POSTCODE_KEYS = [
+  "postcode",
+  "postalcode",
+  "postal_code",
+  "zip",
+  "zipcode",
+  "індекс",
+  "index",
+];
+
+const STATE_KEYS = [
+  "state",
+  "region",
+  "county",
+  "state_district",
+  "oblast",
+  "область",
+  "обл",
+];
+
+const COUNTRY_KEYS = [
+  "country",
+  "country_name",
+  "країна",
+  "countrycode",
+];
+
 export type ParsedAddressParts = {
   number: string;
   street: string;
   city: string;
+  state: string;
+  country: string;
+  postcode: string;
 };
 
 function asTrimmedString(v: unknown): string {
@@ -92,6 +122,9 @@ function parseObjectToParts(data: Record<string, unknown>): ParsedAddressParts {
     number: pickFromObject(data, NUMBER_KEYS),
     street,
     city: pickFromObject(data, CITY_KEYS),
+    state: pickFromObject(data, STATE_KEYS),
+    country: pickFromObject(data, COUNTRY_KEYS),
+    postcode: pickFromObject(data, POSTCODE_KEYS),
   };
 }
 
@@ -215,11 +248,123 @@ function parseNominatimToParts(data: Record<string, unknown>): ParsedAddressPart
     number,
     street: street || nameLabel || amenityLabel,
     city,
+    state:
+      asTrimmedString(addr.state) ||
+      asTrimmedString(addr.region) ||
+      asTrimmedString(addr.state_district) ||
+      "",
+    country: asTrimmedString(addr.country),
+    postcode: asTrimmedString(addr.postcode),
   };
 }
 
 function hasAnyPart(p: ParsedAddressParts): boolean {
-  return Boolean(p.number || p.street || p.city);
+  return Boolean(
+    p.number || p.street || p.city || p.state || p.country || p.postcode,
+  );
+}
+
+/** Нормалізація слова типу вулиці для порівняння (без крапки в кінці). */
+function streetTypeTokenKey(word: string): string {
+  return word.trim().toLowerCase().replace(/\.$/, "");
+}
+
+/** Усі варіанти написання типу, які прибираємо з назви вулиці. */
+const STREET_TYPE_TOKENS = new Set([
+  "вулиця",
+  "вул",
+  "бульвар",
+  "бульв",
+  "проспект",
+  "просп",
+  "провулок",
+  "пров",
+  "площа",
+  "пл",
+  "набережна",
+  "наб",
+  "шосе",
+  "алея",
+  "ал",
+]);
+
+const STREET_TYPE_DETECT: { test: RegExp; prefix: string }[] = [
+  { test: /бульвар|бульв\.?/iu, prefix: "бульв." },
+  { test: /проспект|просп\.?/iu, prefix: "просп." },
+  { test: /провулок|пров\.?/iu, prefix: "пров." },
+  { test: /площа|пл\.?/iu, prefix: "пл." },
+  { test: /набережна|наб\.?/iu, prefix: "наб." },
+  { test: /шосе/iu, prefix: "шосе" },
+  { test: /вулиця|вул\.?/iu, prefix: "вул." },
+];
+
+/** Прибирає всі слова типу вулиці (повні й скорочення) — \b не працює з кирилицею. */
+function stripStreetTypeWords(street: string): string {
+  const words = street.trim().split(/\s+/).filter(Boolean);
+  const kept = words.filter((w) => !STREET_TYPE_TOKENS.has(streetTypeTokenKey(w)));
+  return kept.join(" ").trim();
+}
+
+/** Скорочення типу вулиці + назва без дубля типу. */
+function streetTitlePrefixAndName(street: string): { prefix: string; name: string } {
+  const raw = street.trim();
+  const haystack = raw;
+  let prefix = "вул.";
+
+  for (const { test, prefix: p } of STREET_TYPE_DETECT) {
+    if (test.test(haystack)) {
+      prefix = p;
+      break;
+    }
+  }
+
+  const name = stripStreetTypeWords(raw);
+  return { prefix, name };
+}
+
+/** «вул. Добровольского 126/1» */
+function formatStreetSegment(street: string, number: string): string | null {
+  const { prefix, name } = streetTitlePrefixAndName(street);
+  const num = number.trim();
+  if (!name && !num) return null;
+  if (!name) return `${prefix} ${num}`;
+  if (!num) return `${prefix} ${name}`;
+  return `${prefix} ${name} ${num}`;
+}
+
+function formatCitySegment(city: string): string | null {
+  const c = city.trim();
+  if (!c) return null;
+  if (/^м\.?\s/iu.test(c)) return c;
+  return `м. ${c}`;
+}
+
+function formatPostcodeSegment(postcode: string): string | null {
+  const p = postcode.trim();
+  return p || null;
+}
+
+function formatStateSegment(state: string): string | null {
+  let s = state.trim();
+  if (!s) return null;
+  if (/обл\.?$/iu.test(s)) return s.replace(/\s+/g, " ");
+  if (/область$/iu.test(s)) {
+    return s.replace(/\s*область\s*$/iu, " обл.").trim();
+  }
+  if (/oblast$/iu.test(s)) {
+    return s.replace(/\s*oblast\s*$/iu, " обл.").trim();
+  }
+  return `${s} обл.`;
+}
+
+function formatCountrySegment(country: string): string | null {
+  const c = country.trim();
+  return c || null;
+}
+
+/** Короткий заголовок: «бульв. Французький 123», «вул. Довженка 9а». */
+function formatShortTitleFromParts(parts: ParsedAddressParts): string | null {
+  return formatStreetSegment(parts.street, parts.number);
 }
 
 /**
@@ -255,7 +400,14 @@ export function parseAddressJson(
       }
       const t = parsed.trim();
       if (!t) return null;
-      return { number: "", street: t, city: "" };
+      return {
+        number: "",
+        street: t,
+        city: "",
+        state: "",
+        country: "",
+        postcode: "",
+      };
     }
     if (parsed !== null && typeof parsed === "object" && !Array.isArray(parsed)) {
       const o = parsed as Record<string, unknown>;
@@ -269,19 +421,73 @@ export function parseAddressJson(
     return null;
   } catch {
     if (!s) return null;
-    return { number: "", street: s, city: "" };
+    return {
+      number: "",
+      street: s,
+      city: "",
+      state: "",
+      country: "",
+      postcode: "",
+    };
   }
 }
 
-/** Один рядок: «Номер: …, Вулиця: …, Місто: …». */
+function formatFullLineFromParts(parts: ParsedAddressParts): string | null {
+  const segments: string[] = [];
+  const streetLine = formatStreetSegment(parts.street, parts.number);
+  if (streetLine) segments.push(streetLine);
+
+  const cityLine = formatCitySegment(parts.city);
+  if (cityLine) segments.push(cityLine);
+
+  const stateLine = formatStateSegment(parts.state);
+  if (stateLine) segments.push(stateLine);
+
+  const countryLine = formatCountrySegment(parts.country);
+  if (countryLine) segments.push(countryLine);
+
+  const postcodeLine = formatPostcodeSegment(parts.postcode);
+  if (postcodeLine) segments.push(postcodeLine);
+
+  if (segments.length === 0) return null;
+  return segments.join(", ");
+}
+
+/** Короткий заголовок з addressJson: «Французький бульвар 123». */
+export function formatAddressJsonShortTitle(
+  raw: string | null | undefined,
+): string | null {
+  const parts = parseAddressJson(raw);
+  if (!parts) return null;
+  return formatShortTitleFromParts(parts);
+}
+
+/** Повна адреса: «вул. …, м. …, … обл., Україна, індекс». */
+export function formatAddressJsonFullLine(
+  raw: string | null | undefined,
+): string | null {
+  const parts = parseAddressJson(raw);
+  if (!parts) return null;
+  return formatFullLineFromParts(parts);
+}
+
+/** Один рядок: «вул. Добровольского 126/1, м. Одеса, 65111». */
 export function formatAddressJsonUkrLine(
   raw: string | null | undefined,
 ): string | null {
   const parts = parseAddressJson(raw);
   if (!parts) return null;
-  const n = parts.number || "—";
-  const st = parts.street || "—";
-  const c = parts.city || "—";
-  if (n === "—" && st === "—" && c === "—") return null;
-  return `Номер: ${n}, Вулиця: ${st}, Місто: ${c}`;
+
+  const segments: string[] = [];
+  const streetLine = formatStreetSegment(parts.street, parts.number);
+  if (streetLine) segments.push(streetLine);
+
+  const cityLine = formatCitySegment(parts.city);
+  if (cityLine) segments.push(cityLine);
+
+  const postcodeLine = formatPostcodeSegment(parts.postcode);
+  if (postcodeLine) segments.push(postcodeLine);
+
+  if (segments.length === 0) return null;
+  return segments.join(", ");
 }

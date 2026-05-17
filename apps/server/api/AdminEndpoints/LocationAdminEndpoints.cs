@@ -25,6 +25,7 @@ public static class LocationAdminEndpoints
         var items = await db.Locations
             .AsNoTracking()
             .Include(x => x.LocationType)
+            .Include(x => x.Photos)
             .OrderBy(x => x.Title)
             .ToListAsync(cancellationToken);
         return Results.Ok(items.Select(AdminEntityResponses.LocationListItem));
@@ -39,6 +40,7 @@ public static class LocationAdminEndpoints
         var entity = await db.Locations
             .AsNoTracking()
             .Include(x => x.LocationType)
+            .Include(x => x.Photos)
             .FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
         return entity is null ? Results.NotFound() : Results.Ok(AdminEntityResponses.LocationListItem(entity));
     }
@@ -59,7 +61,6 @@ public static class LocationAdminEndpoints
             Latitude = dto.Latitude ?? 0,
             Longitude = dto.Longitude ?? 0,
             Description = dto.Description,
-            ImageUrl = dto.ImageUrl,
             AddressJson = dto.AddressJson,
         };
 
@@ -99,8 +100,6 @@ public static class LocationAdminEndpoints
             entity.Longitude = dto.Longitude.Value;
         if (dto.Description is not null)
             entity.Description = dto.Description;
-        if (dto.ImageUrl is not null)
-            entity.ImageUrl = dto.ImageUrl;
         if (dto.AddressJson is not null)
             entity.AddressJson = dto.AddressJson;
 
@@ -117,6 +116,7 @@ public static class LocationAdminEndpoints
         var entity = await db.Locations
             .AsNoTracking()
             .Include(x => x.LocationType)
+            .Include(x => x.Photos)
             .FirstAsync(x => x.Id == id, cancellationToken);
         return AdminEntityResponses.LocationListItem(entity);
     }
@@ -143,6 +143,5 @@ public static class LocationAdminEndpoints
         double? Latitude,
         double? Longitude,
         string? Description,
-        string? ImageUrl,
         string? AddressJson);
 }

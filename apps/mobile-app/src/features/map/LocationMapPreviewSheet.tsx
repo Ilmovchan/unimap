@@ -16,7 +16,6 @@ import * as Location from "expo-location";
 import BottomSheet, {
   BottomSheetBackdrop,
   BottomSheetScrollView,
-  BottomSheetView,
 } from "@gorhom/bottom-sheet";
 import log from "loglevel";
 import React, {
@@ -48,8 +47,8 @@ type Props = {
   onDismiss: () => void;
 };
 
-const SNAP_PREVIEW: (string | number)[] = ["40%", "94%"];
-const SNAP_NAV_ONLY: (string | number)[] = ["32%"];
+/** Не змінюємо кількість snap-пойнтів під час навігації — інакше sheet закривається. */
+const SNAP_POINTS: (string | number)[] = ["40%", "94%"];
 
 const ROUTE_REFRESH_EVERY_METERS = 100;
 
@@ -104,6 +103,7 @@ export default function LocationMapPreviewSheet({
 
   const insets = useSafeAreaInsets();
   const sheetRef = useRef<ComponentRef<typeof BottomSheet>>(null);
+  const [sheetIndex, setSheetIndex] = useState(-1);
   const [detail, setDetail] = useState<LocationDetailDto | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
   const [detailError, setDetailError] = useState<string | null>(null);
@@ -113,6 +113,7 @@ export default function LocationMapPreviewSheet({
     longitude: number;
   } | null>(null);
   const routeRefreshInFlightRef = useRef(false);
+  const navTransitionRef = useRef(false);
 
   const sheetLoc = detail;
 
@@ -121,12 +122,9 @@ export default function LocationMapPreviewSheet({
     [sheetLoc],
   );
 
-  const isNavPanel = Boolean(locationId && routeFeature && routeSummary);
+  const objectCount = sheetLoc?.objects?.length ?? 0;
 
-  const snapPoints = useMemo(
-    () => (isNavPanel ? SNAP_NAV_ONLY : SNAP_PREVIEW),
-    [isNavPanel],
-  );
+  const isNavPanel = Boolean(locationId && routeFeature);
 
   useEffect(() => {
     if (!locationId) {
@@ -165,20 +163,20 @@ export default function LocationMapPreviewSheet({
 
   useEffect(() => {
     if (locationId) {
-      requestAnimationFrame(() => {
-        sheetRef.current?.snapToIndex(0);
-      });
+      setSheetIndex(0);
     } else {
-      sheetRef.current?.close();
+      setSheetIndex(-1);
     }
   }, [locationId]);
 
   useEffect(() => {
-    if (isNavPanel) {
-      requestAnimationFrame(() => {
-        sheetRef.current?.snapToIndex(0);
-      });
-    }
+    if (!isNavPanel) return;
+    navTransitionRef.current = true;
+    setSheetIndex(0);
+    const t = setTimeout(() => {
+      navTransitionRef.current = false;
+    }, 500);
+    return () => clearTimeout(t);
   }, [isNavPanel]);
 
   useEffect(() => {
@@ -232,7 +230,8 @@ export default function LocationMapPreviewSheet({
 
   const handleSheetChange = useCallback(
     (index: number) => {
-      if (index === -1) {
+      setSheetIndex(index);
+      if (index === -1 && !navTransitionRef.current) {
         onDismiss();
       }
     },
@@ -241,7 +240,7 @@ export default function LocationMapPreviewSheet({
 
   const expandSheet = useCallback(() => {
     if (isNavPanel) return;
-    sheetRef.current?.snapToIndex(1);
+    setSheetIndex(1);
   }, [isNavPanel]);
 
   const startNavigation = useCallback(() => {
@@ -261,7 +260,12 @@ export default function LocationMapPreviewSheet({
           endLng: detail.lng,
           endLat: detail.lat,
         });
+        navTransitionRef.current = true;
         setRouteCoords(coordinates, summary);
+        setSheetIndex(0);
+        setTimeout(() => {
+          navTransitionRef.current = false;
+        }, 500);
       } catch (e) {
         const msg =
           e instanceof Error ? e.message : "Не вдалося побудувати маршрут.";
@@ -275,173 +279,179 @@ export default function LocationMapPreviewSheet({
   const scrollBottomPad = Math.max(insets.bottom, 12);
 
   const renderBackdrop = useCallback(
-    (props: React.ComponentProps<typeof BottomSheetBackdrop>) => {
-      if (isNavPanel) {
-        return null;
-      }
-      return (
-        <BottomSheetBackdrop
-          {...props}
-          disappearsOnIndex={0}
-          appearsOnIndex={1}
-          opacity={0.42}
-          pressBehavior="collapse"
-        />
-      );
-    },
+    (props: React.ComponentProps<typeof BottomSheetBackdrop>) => (
+      <BottomSheetBackdrop
+        {...props}
+        disappearsOnIndex={0}
+        appearsOnIndex={1}
+        opacity={isNavPanel ? 0 : 0.42}
+        pressBehavior={isNavPanel ? "none" : "collapse"}
+        enableTouchThrough={isNavPanel}
+      />
+    ),
     [isNavPanel],
   );
 
-  const navStats = routeSummary as NavigationRouteSummary;
+  const navStats: NavigationRouteSummary | null = routeSummary;
 
   return (
     <BottomSheet
       ref={sheetRef}
-      index={-1}
-      snapPoints={snapPoints}
+      index={sheetIndex}
+      snapPoints={SNAP_POINTS}
       enableDynamicSizing={false}
-      enablePanDownToClose
+      enablePanDownToClose={!isNavPanel}
       bottomInset={0}
       onChange={handleSheetChange}
-      backdropComponent={isNavPanel ? undefined : renderBackdrop}
+      backdropComponent={renderBackdrop}
       backgroundStyle={styles.sheetBackground}
       handleIndicatorStyle={styles.handleIndicator}
     >
-      {isNavPanel ? (
-        <BottomSheetView
-          style={[styles.navSheetBody, { paddingBottom: scrollBottomPad + 6 }]}
-        >
-          <View style={styles.navHeader}>
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel="Назад: скасувати маршрут"
-              hitSlop={10}
-              style={({ pressed }) => [
-                styles.navHeaderSide,
-                pressed && styles.navHeaderPressed,
-              ]}
-              onPress={onRouteNavigationBack}
-            >
-              <Ionicons
-                name="chevron-back"
-                size={28}
-                color={globalColors.title}
-              />
-            </Pressable>
-            <Text style={styles.navHeaderTitle} numberOfLines={1}>
-              {sheetLoc ? sheetTitle : "Пункт призначення"}
-            </Text>
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel={
-                routeCameraImmersive
-                  ? "Звичайний вигляд карти"
-                  : "Вигляд ніби з дороги"
-              }
-              hitSlop={10}
-              style={({ pressed }) => [
-                styles.navHeaderSide,
-                styles.navHeaderSideRight,
-                pressed && styles.navHeaderPressed,
-              ]}
-              onPress={onToggleRouteCameraImmersive}
-            >
-              <Ionicons
-                name={routeCameraImmersive ? "map-outline" : "navigate"}
-                size={24}
-                color={globalColors.accent}
-              />
-            </Pressable>
-          </View>
-
-          <View style={styles.navStatsRow}>
-            <View style={styles.navStatBox}>
-              <Ionicons
-                name="analytics-outline"
-                size={20}
-                color={globalColors.icon}
-              />
-              <Text style={styles.navStatValue}>
-                {formatDistanceUa(navStats.distanceMeters)}
-              </Text>
-              <Text style={styles.navStatHint}>відстань</Text>
-            </View>
-            <View style={styles.navStatDivider} />
-            <View style={styles.navStatBox}>
-              <Ionicons
-                name="time-outline"
-                size={20}
-                color={globalColors.icon}
-              />
-              <Text style={styles.navStatValue}>
-                {formatDurationUa(navStats.durationSeconds)}
-              </Text>
-              <Text style={styles.navStatHint}>пішки, орієнтовно</Text>
-            </View>
-          </View>
-        </BottomSheetView>
-      ) : (
-        <BottomSheetScrollView
-          contentContainerStyle={[
-            styles.scrollInner,
-            { paddingBottom: scrollBottomPad + 20 },
-          ]}
-          keyboardShouldPersistTaps="handled"
-        >
-          <View style={styles.toolbarWrap}>
-            <View style={styles.toolbar}>
+      <BottomSheetScrollView
+        scrollEnabled={!isNavPanel}
+        contentContainerStyle={[
+          isNavPanel ? styles.navScrollInner : styles.scrollInner,
+          { paddingBottom: scrollBottomPad + (isNavPanel ? 6 : 20) },
+        ]}
+        keyboardShouldPersistTaps="handled"
+      >
+        {isNavPanel ? (
+          <>
+            <View style={styles.navHeader}>
               <Pressable
                 accessibilityRole="button"
-                accessibilityHint="Розгорнути картку локації"
-                style={styles.summaryTap}
-                onPress={expandSheet}
-              >
-                <Text style={styles.title} numberOfLines={2}>
-                  {sheetTitle}
-                </Text>
-              </Pressable>
-
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel="Побудувати маршрут до об’єкта"
-                hitSlop={12}
-                disabled={navLoading}
+                accessibilityLabel="Назад до картки локації"
+                hitSlop={10}
                 style={({ pressed }) => [
-                  styles.iconButton,
-                  pressed && styles.iconButtonPressed,
+                  styles.navHeaderSide,
+                  pressed && styles.navHeaderPressed,
                 ]}
-                onPress={startNavigation}
+                onPress={onRouteNavigationBack}
               >
-                {navLoading ? (
+                <Ionicons
+                  name="chevron-back"
+                  size={28}
+                  color={globalColors.title}
+                />
+              </Pressable>
+              <Text style={styles.navHeaderTitle} numberOfLines={1}>
+                {sheetLoc ? sheetTitle : "Пункт призначення"}
+              </Text>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={
+                  routeCameraImmersive
+                    ? "Звичайний вигляд карти"
+                    : "Вигляд ніби з дороги"
+                }
+                hitSlop={10}
+                style={({ pressed }) => [
+                  styles.navHeaderSide,
+                  styles.navHeaderSideRight,
+                  pressed && styles.navHeaderPressed,
+                ]}
+                onPress={onToggleRouteCameraImmersive}
+              >
+                <Ionicons
+                  name={routeCameraImmersive ? "map-outline" : "navigate"}
+                  size={24}
+                  color={globalColors.accent}
+                />
+              </Pressable>
+            </View>
+
+            <View style={styles.navStatsRow}>
+              <View style={styles.navStatBox}>
+                <Ionicons
+                  name="analytics-outline"
+                  size={20}
+                  color={globalColors.icon}
+                />
+                <Text style={styles.navStatValue}>
+                  {formatDistanceUa(navStats?.distanceMeters ?? NaN)}
+                </Text>
+                <Text style={styles.navStatHint}>відстань</Text>
+              </View>
+              <View style={styles.navStatDivider} />
+              <View style={styles.navStatBox}>
+                <Ionicons
+                  name="time-outline"
+                  size={20}
+                  color={globalColors.icon}
+                />
+                <Text style={styles.navStatValue}>
+                  {formatDurationUa(navStats?.durationSeconds ?? NaN)}
+                </Text>
+                <Text style={styles.navStatHint}>пішки, орієнтовно</Text>
+              </View>
+            </View>
+          </>
+        ) : (
+          <View style={styles.sheetMain}>
+            <View style={styles.toolbarWrap}>
+              <View style={styles.toolbar}>
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityHint="Розгорнути картку локації"
+                  style={styles.summaryTap}
+                  onPress={expandSheet}
+                >
+                  <Text style={styles.title} numberOfLines={2}>
+                    {sheetTitle}
+                    {objectCount > 0 ? (
+                      <Text style={styles.objectCount}> ({objectCount})</Text>
+                    ) : null}
+                  </Text>
+                </Pressable>
+
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel="Побудувати маршрут до об’єкта"
+                  hitSlop={12}
+                  disabled={navLoading}
+                  style={({ pressed }) => [
+                    styles.iconButton,
+                    pressed && styles.iconButtonPressed,
+                  ]}
+                  onPress={startNavigation}
+                >
+                  {navLoading ? (
+                    <ActivityIndicator
+                      size="small"
+                      color={globalColors.navigationFabIcon}
+                    />
+                  ) : (
+                    <Ionicons
+                      name="navigate"
+                      size={24}
+                      color={globalColors.navigationFabIcon}
+                    />
+                  )}
+                </Pressable>
+              </View>
+            </View>
+
+            <View style={styles.sheetBody}>
+              {detailLoading ? (
+                <View style={styles.sheetLoading}>
                   <ActivityIndicator
                     size="small"
-                    color={globalColors.navigationFabIcon}
+                    color={globalColors.accent}
                   />
-                ) : (
-                  <Ionicons
-                    name="navigate"
-                    size={24}
-                    color={globalColors.navigationFabIcon}
-                  />
-                )}
-              </Pressable>
+                  <Text style={styles.sheetLoadingText}>Завантаження…</Text>
+                </View>
+              ) : detailError ? (
+                <Text style={styles.sheetError}>{detailError}</Text>
+              ) : detail ? (
+                <LocationDetailSections
+                  location={detail}
+                  showHeadline={false}
+                />
+              ) : null}
             </View>
           </View>
-
-          <View style={styles.sheetBody}>
-            {detailLoading ? (
-              <View style={styles.sheetLoading}>
-                <ActivityIndicator size="small" color={globalColors.accent} />
-                <Text style={styles.sheetLoadingText}>Завантаження…</Text>
-              </View>
-            ) : detailError ? (
-              <Text style={styles.sheetError}>{detailError}</Text>
-            ) : detail ? (
-              <LocationDetailSections location={detail} showHeadline={false} />
-            ) : null}
-          </View>
-        </BottomSheetScrollView>
-      )}
+        )}
+      </BottomSheetScrollView>
     </BottomSheet>
   );
 }
@@ -468,7 +478,7 @@ const styles = StyleSheet.create({
     backgroundColor: globalColors.border,
     width: 40,
   },
-  navSheetBody: {
+  navScrollInner: {
     paddingHorizontal: 16,
     paddingTop: 2,
   },
@@ -530,6 +540,9 @@ const styles = StyleSheet.create({
     color: globalColors.subtitle,
     textAlign: "center",
   },
+  sheetMain: {
+    width: "100%",
+  },
   toolbarWrap: {
     paddingBottom: 4,
   },
@@ -560,13 +573,22 @@ const styles = StyleSheet.create({
     minHeight: 44,
     justifyContent: "center",
     paddingVertical: 4,
-    paddingHorizontal: 4,
+    paddingLeft: 6,
+    paddingRight: 4,
   },
   title: {
-    fontSize: 17,
+    fontSize: 18,
+    lineHeight: 24,
     fontWeight: "600",
     color: globalColors.title,
     letterSpacing: -0.2,
+  },
+  objectCount: {
+    fontSize: 18,
+    lineHeight: 24,
+    fontWeight: "600",
+    letterSpacing: -0.2,
+    color: globalColors.subtitle,
   },
   scrollInner: {
     paddingHorizontal: 20,

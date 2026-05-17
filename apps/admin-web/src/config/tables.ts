@@ -7,6 +7,7 @@ export type FieldType =
   | 'datetime'
   | 'fk'
   | 'enum'
+  | 'password'
 
 export type EnumOption = {
   value: string
@@ -22,11 +23,15 @@ export type TableField = {
   list?: boolean
   /** false = only in table, not in create/edit form */
   form?: boolean
+  /** false = hide in detail modal */
+  detail?: boolean
   /** Admin resource for fk select options */
   fkResource?: string
   fkLabelKey?: string
   fkLabelKey2?: string
   enumOptions?: EnumOption[]
+  /** JSON property name when it differs from form field key (e.g. password → passwordHash) */
+  payloadKey?: string
 }
 
 export type TableLayoutMode = 'expand' | 'compact'
@@ -38,6 +43,8 @@ export type AdminTable = {
   fields: TableField[]
   /** compact: min-width cols + gutter before created_at */
   layoutMode?: TableLayoutMode
+  /** visible only for super_admin */
+  superAdminOnly?: boolean
 }
 
 export const ADMIN_TABLES: AdminTable[] = [
@@ -68,7 +75,6 @@ export const ADMIN_TABLES: AdminTable[] = [
       { key: 'latitude', label: 'latitude', type: 'number', required: true, list: true },
       { key: 'longitude', label: 'longitude', type: 'number', required: true, list: true },
       { key: 'description', label: 'Description', type: 'textarea', list: true, wide: true },
-      { key: 'imageUrl', label: 'image_url', type: 'text', list: true },
       { key: 'addressJson', label: 'addressJson', type: 'textarea', list: true, wide: true },
       { key: 'createdAt', label: 'created_at', type: 'datetime', list: true, form: false },
       { key: 'updatedAt', label: 'updated_at', type: 'datetime', list: true, form: false },
@@ -80,6 +86,7 @@ export const ADMIN_TABLES: AdminTable[] = [
     label: 'Об’єкти',
     fields: [
       { key: 'id', label: 'ID', type: 'text', list: true, form: false },
+      { key: 'title', label: 'title', type: 'text', required: true, list: true, form: true },
       {
         key: 'locationTitle',
         label: 'location',
@@ -113,7 +120,6 @@ export const ADMIN_TABLES: AdminTable[] = [
         required: true,
         form: true,
       },
-      { key: 'title', label: 'title', type: 'text', required: true, form: true },
       { key: 'description', label: 'description', type: 'textarea', list: true, wide: true },
       { key: 'createdAt', label: 'created_at', type: 'datetime', list: true, form: false },
       { key: 'updatedAt', label: 'updated_at', type: 'datetime', list: true, form: false },
@@ -159,4 +165,37 @@ export const ADMIN_TABLES: AdminTable[] = [
       { key: 'updatedAt', label: 'updated_at', type: 'datetime', list: true, form: false },
     ],
   },
+  {
+    id: 'admins',
+    resource: 'admins',
+    label: 'Адміністратори',
+    superAdminOnly: true,
+    layoutMode: 'compact',
+    fields: [
+      { key: 'id', label: 'ID', type: 'text', list: true, form: false },
+      { key: 'username', label: 'username', type: 'text', required: true, list: true },
+      { key: 'email', label: 'email', type: 'text', required: true, list: true },
+      { key: 'role', label: 'role', type: 'text', list: true, form: false },
+      { key: 'passwordHash', label: 'password_hash', type: 'text', list: true, form: false },
+      {
+        key: 'password',
+        label: 'password',
+        type: 'password',
+        payloadKey: 'passwordHash',
+        required: true,
+        form: true,
+        list: false,
+        detail: false,
+      },
+      { key: 'createdAt', label: 'created_at', type: 'datetime', list: true, form: false },
+      { key: 'updatedAt', label: 'updated_at', type: 'datetime', list: true, form: false },
+      { key: 'lastLoginAt', label: 'last_login_at', type: 'datetime', list: true, form: false },
+    ],
+  },
 ]
+
+export function getVisibleAdminTables(role?: string | null): AdminTable[] {
+  return ADMIN_TABLES.filter(
+    (table) => !table.superAdminOnly || role === 'super_admin',
+  )
+}

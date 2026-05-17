@@ -1,6 +1,6 @@
 namespace infrastructure.GeoService;
 
-public class OpenRouteGeoService : IGeoProvider
+public class OpenRouteGeoProvider : IGeoProvider
 {
     private static readonly HttpClient HttpClient = new();
 

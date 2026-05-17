@@ -1,4 +1,8 @@
+using System.IdentityModel.Tokens.Jwt;
+using System.Security.Claims;
+using System.Text.Json.Serialization;
 using domain.Entities;
+using infrastructure.Auth;
 using Microsoft.EntityFrameworkCore;
 using persistence;
 
@@ -42,16 +46,14 @@ public static class AdminAdminEndpoints
     private static async Task<IResult> CreateAsync(
         AdminWriteDto dto,
         IDbContextFactory<UniMapDbContext> dbFactory,
+        IAdminPasswordHasher passwordHasher,
         CancellationToken cancellationToken)
     {
+        var plainPassword = ResolvePlainPassword(dto);
         if (string.IsNullOrWhiteSpace(dto.Username) ||
             string.IsNullOrWhiteSpace(dto.Email) ||
-            string.IsNullOrWhiteSpace(dto.PasswordHash) ||
-            string.IsNullOrWhiteSpace(dto.Role))
-            return Results.BadRequest(new { error = "username, email, password_hash and role are required." });
-
-        if (!AdminRoleExtensions.IsValidRole(dto.Role))
-            return Results.BadRequest(new { error = "role must be admin or super_admin." });
+            string.IsNullOrWhiteSpace(plainPassword))
+            return Results.BadRequest(new { error = "username, email and password are required." });
 
         var username = dto.Username.Trim();
         var email = dto.Email.Trim().ToLowerInvariant();
@@ -67,8 +69,8 @@ public static class AdminAdminEndpoints
             Id = dto.Id ?? Guid.Empty,
             Username = username,
             Email = email,
-            PasswordHash = dto.PasswordHash.Trim(),
-            Role = AdminRoleExtensions.ParseRole(dto.Role),
+            PasswordHash = passwordHasher.Hash(plainPassword),
+            Role = AdminRole.Admin,
             LastLoginAt = dto.LastLoginAt,
         };
 
@@ -89,6 +91,7 @@ public static class AdminAdminEndpoints
         Guid id,
         AdminWriteDto dto,
         IDbContextFactory<UniMapDbContext> dbFactory,
+        IAdminPasswordHasher passwordHasher,
         CancellationToken cancellationToken)
     {
         await using var db = await dbFactory.CreateDbContextAsync(cancellationToken);
@@ -112,15 +115,9 @@ public static class AdminAdminEndpoints
             entity.Email = email;
         }
 
-        if (!string.IsNullOrWhiteSpace(dto.PasswordHash))
-            entity.PasswordHash = dto.PasswordHash.Trim();
-
-        if (!string.IsNullOrWhiteSpace(dto.Role))
-        {
-            if (!AdminRoleExtensions.IsValidRole(dto.Role))
-                return Results.BadRequest(new { error = "role must be admin or super_admin." });
-            entity.Role = AdminRoleExtensions.ParseRole(dto.Role);
-        }
+        var plainPassword = ResolvePlainPassword(dto);
+        if (!string.IsNullOrWhiteSpace(plainPassword))
+            entity.PasswordHash = passwordHasher.Hash(plainPassword);
 
         if (dto.LastLoginAt.HasValue)
             entity.LastLoginAt = dto.LastLoginAt;
@@ -139,24 +136,61 @@ public static class AdminAdminEndpoints
 
     private static async Task<IResult> DeleteAsync(
         Guid id,
+        HttpContext httpContext,
         IDbContextFactory<UniMapDbContext> dbFactory,
         CancellationToken cancellationToken)
     {
+        if (!TryGetCurrentAdminId(httpContext, out var currentAdminId))
+            return Results.Unauthorized();
+
         await using var db = await dbFactory.CreateDbContextAsync(cancellationToken);
         var entity = await db.Admins.FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
         if (entity is null)
             return Results.NotFound();
+
+        var deleteError = GetAdminDeleteError(entity, currentAdminId);
+        if (deleteError is not null)
+            return Results.BadRequest(new { error = deleteError });
 
         db.Admins.Remove(entity);
         await db.SaveChangesAsync(cancellationToken);
         return Results.NoContent();
     }
 
+    private static string? GetAdminDeleteError(Admin target, Guid currentAdminId)
+    {
+        if (target.Id == currentAdminId)
+            return "you cannot delete your own account.";
+
+        if (target.Role == AdminRole.SuperAdmin)
+            return "super_admin accounts cannot be deleted.";
+
+        return null;
+    }
+
+    private static bool TryGetCurrentAdminId(HttpContext httpContext, out Guid adminId)
+    {
+        adminId = default;
+        var idValue = httpContext.User.FindFirstValue(ClaimTypes.NameIdentifier)
+            ?? httpContext.User.FindFirstValue(JwtRegisteredClaimNames.Sub);
+        return Guid.TryParse(idValue, out adminId);
+    }
+
+    private static string? ResolvePlainPassword(AdminWriteDto dto)
+    {
+        if (!string.IsNullOrWhiteSpace(dto.Password))
+            return dto.Password.Trim();
+        if (!string.IsNullOrWhiteSpace(dto.PasswordHash))
+            return dto.PasswordHash.Trim();
+        return null;
+    }
+
     private sealed record AdminWriteDto(
         Guid? Id,
         string? Username,
         string? Email,
-        string? PasswordHash,
+        [property: JsonPropertyName("passwordHash")] string? PasswordHash,
+        [property: JsonPropertyName("password")] string? Password,
         string? Role,
         DateTimeOffset? LastLoginAt);
 }

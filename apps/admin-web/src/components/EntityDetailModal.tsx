@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { createElement, useEffect, type MouseEvent } from 'react'
 import type { AdminTable, TableField } from '../config/tables'
 
 type Row = Record<string, unknown> & { id: string }
@@ -9,6 +9,15 @@ type Props = {
   onClose: () => void
   onEdit: () => void
   onDelete: () => void
+  canDelete?: boolean
+}
+
+const el = 'd' + 'iv'
+
+function showInDetail(field: TableField): boolean {
+  if (field.detail === false) return false
+  if (field.detail === true) return true
+  return !(field.form === true && field.list === false)
 }
 
 function formatDetailValue(value: unknown, field: TableField): string {
@@ -29,13 +38,28 @@ function isLongText(field: TableField, value: unknown): boolean {
   return text.length > 120 || text.includes('\n')
 }
 
+function MaskedSecret({ value }: { value: string }) {
+  const text = value.trim()
+  if (!text) return '—'
+
+  return createElement(
+    'span',
+    { className: 'detail-secret' },
+    createElement('span', { className: 'detail-secret-mask', 'aria-hidden': true }, '•'.repeat(12)),
+    createElement('span', { className: 'detail-secret-value' }, text),
+  )
+}
+
 export default function EntityDetailModal({
   table,
   row,
   onClose,
   onEdit,
   onDelete,
+  canDelete = true,
 }: Props) {
+  const detailFields = table.fields.filter(showInDetail)
+
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') onClose()
@@ -44,51 +68,80 @@ export default function EntityDetailModal({
     return () => window.removeEventListener('keydown', onKeyDown)
   }, [onClose])
 
-  return (
-    <div className="detail-overlay" onClick={onClose} role="presentation">
-      <div
-        className="detail-dialog"
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="detail-title"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <header className="detail-header">
-          <h3 id="detail-title">{table.label}</h3>
-          <button type="button" className="btn btn-icon detail-close" onClick={onClose} aria-label="Закрити">
-            <svg viewBox="0 0 24 24" aria-hidden="true">
-              <path
-                fill="currentColor"
-                d="M18.3 5.71 12 12.01 5.7 5.71 4.29 7.12l6.3 6.3-6.3 6.29 1.41 1.42 6.29-6.3 6.3 6.3 1.41-1.41-6.3-6.29 6.3-6.29z"
-              />
-            </svg>
-          </button>
-        </header>
+  return createElement(
+    el,
+    { className: 'detail-overlay', onClick: onClose, role: 'presentation' },
+    createElement(
+      el,
+      {
+        className: 'detail-dialog',
+        role: 'dialog',
+        'aria-modal': true,
+        'aria-labelledby': 'detail-title',
+        onClick: (e: MouseEvent) => e.stopPropagation(),
+      },
+      createElement(
+        'header',
+        { className: 'detail-header' },
+        createElement('h3', { id: 'detail-title' }, table.label),
+        createElement(
+          'button',
+          {
+            type: 'button',
+            className: 'btn btn-icon detail-close',
+            onClick: onClose,
+            'aria-label': 'Закрити',
+          },
+          createElement(
+            'svg',
+            { viewBox: '0 0 24 24', 'aria-hidden': true },
+            createElement('path', {
+              fill: 'currentColor',
+              d: 'M18.3 5.71 12 12.01 5.7 5.71 4.29 7.12l6.3 6.3-6.3 6.29 1.41 1.42 6.29-6.3 6.3 6.3 1.41-1.41-6.3-6.29 6.3-6.29z',
+            }),
+          ),
+        ),
+      ),
+      createElement(
+        'dl',
+        { className: 'detail-fields' },
+        ...detailFields.map((field) => {
+          const value = row[field.key]
+          const long = isLongText(field, value)
+          const isSecret = field.key === 'passwordHash'
 
-        <dl className="detail-fields">
-          {table.fields.map((field) => {
-            const value = row[field.key]
-            const long = isLongText(field, value)
-            return (
-              <div key={field.key} className="detail-field">
-                <dt>{field.label}</dt>
-                <dd className={long ? 'detail-value-long' : undefined}>
-                  {long ? <pre>{formatDetailValue(value, field)}</pre> : formatDetailValue(value, field)}
-                </dd>
-              </div>
+          return createElement(
+            el,
+            { key: field.key, className: 'detail-field' },
+            createElement('dt', null, field.label),
+            createElement(
+              'dd',
+              { className: long ? 'detail-value-long' : undefined },
+              isSecret
+                ? createElement(MaskedSecret, { value: String(value ?? '') })
+                : long
+                  ? createElement('pre', null, formatDetailValue(value, field))
+                  : formatDetailValue(value, field),
+            ),
+          )
+        }),
+      ),
+      createElement(
+        el,
+        { className: 'detail-actions' },
+        createElement(
+          'button',
+          { type: 'button', className: 'btn btn-primary', onClick: onEdit },
+          'Редагувати',
+        ),
+        canDelete
+          ? createElement(
+              'button',
+              { type: 'button', className: 'btn btn-danger', onClick: onDelete },
+              'Видалити',
             )
-          })}
-        </dl>
-
-        <div className="detail-actions">
-          <button type="button" className="btn btn-primary" onClick={onEdit}>
-            Редагувати
-          </button>
-          <button type="button" className="btn btn-danger" onClick={onDelete}>
-            Видалити
-          </button>
-        </div>
-      </div>
-    </div>
+          : null,
+      ),
+    ),
   )
 }

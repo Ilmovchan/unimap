@@ -553,6 +553,11 @@ const Map = ({
             <LineLayer
               id={`${ROUTE_SOURCE_ID}-line`}
               sourceID={ROUTE_SOURCE_ID}
+              belowLayerID={
+                markers.length > 0
+                  ? `${CLUSTER_SOURCE_ID}-point-building`
+                  : undefined
+              }
               style={routeLineStyle}
             />
           </ShapeSource>

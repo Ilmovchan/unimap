@@ -10,6 +10,8 @@ import Map, {
 } from "@/src/features/map/";
 import LocationMapPreviewSheet from "@/src/features/map/LocationMapPreviewSheet";
 import LayoutButton from "@/src/features/map/components/LayoutButton";
+import MapSearchChrome from "@/src/features/map/components/MapSearchChrome";
+import { MAP_SEARCH_UI_ENABLED } from "@/src/features/map/mapSearchConfig";
 import { getUnreadNewsCount } from "@/src/features/news/newsClient";
 import { globalColors } from "@/src/styles/styles";
 import { Ionicons } from "@expo/vector-icons";
@@ -189,7 +191,6 @@ export default function MapScreen() {
 
     clearRoute();
     setRouteCameraImmersive(false);
-    setSelectedLocationId(null);
 
     if (!loc || !Number.isFinite(loc.lat) || !Number.isFinite(loc.lng)) {
       setCameraFollowUser(true);
@@ -287,49 +288,66 @@ export default function MapScreen() {
         />
       </View>
 
-      <LayoutButton
-        style={{
-          top: fabTop,
-          left: fabSide,
-          zIndex: 9999,
-        }}
-        icon={
-          <Ionicons
-            size={26}
-            name="business-outline"
-            color={globalColors.navigationFabIcon}
+      {MAP_SEARCH_UI_ENABLED ? (
+        <MapSearchChrome
+          top={fabTop}
+          horizontalInset={fabSide}
+          unreadNewsCount={unreadNewsCount}
+          onOpenLocations={() => {
+            setSelectedLocationId(null);
+            router.push("/locations");
+          }}
+          onOpenNews={() => {
+            router.push("/news");
+          }}
+        />
+      ) : (
+        <>
+          <LayoutButton
+            style={{
+              top: fabTop,
+              left: fabSide,
+              zIndex: 9999,
+            }}
+            icon={
+              <Ionicons
+                size={26}
+                name="business-outline"
+                color={globalColors.navigationFabIcon}
+              />
+            }
+            accessibilityLabel="Усі відділення"
+            onPress={() => {
+              setSelectedLocationId(null);
+              router.push("/locations");
+            }}
           />
-        }
-        accessibilityLabel="Усі відділення"
-        onPress={() => {
-          setSelectedLocationId(null);
-          router.push("/locations");
-        }}
-      />
 
-      <LayoutButton
-        style={{
-          top: fabTop,
-          right: fabSide,
-          zIndex: 9999,
-        }}
-        icon={
-          <Ionicons
-            size={26}
-            name="newspaper-outline"
-            color={globalColors.navigationFabIcon}
+          <LayoutButton
+            style={{
+              top: fabTop,
+              right: fabSide,
+              zIndex: 9999,
+            }}
+            icon={
+              <Ionicons
+                size={26}
+                name="newspaper-outline"
+                color={globalColors.navigationFabIcon}
+              />
+            }
+            badgeCount={unreadNewsCount > 0 ? unreadNewsCount : undefined}
+            accessibilityLabel={
+              unreadNewsCount > 0
+                ? `Новини університету, ${unreadNewsCount} непрочитаних`
+                : "Новини університету"
+            }
+            onPress={() => {
+              router.push("/news");
+            }}
           />
-        }
-        badgeCount={unreadNewsCount > 0 ? unreadNewsCount : undefined}
-        accessibilityLabel={
-          unreadNewsCount > 0
-            ? `Новини університету, ${unreadNewsCount} непрочитаних`
-            : "Новини університету"
-        }
-        onPress={() => {
-          router.push("/news");
-        }}
-      />
+        </>
+      )}
 
       <LayoutButton
         style={{

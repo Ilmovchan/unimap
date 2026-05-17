@@ -9,6 +9,54 @@
   margin-bottom: 20px;
 }
 
+.admin-header-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.admin-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-shrink: 0;
+}
+
+.admin-session {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.admin-role-badge {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.3px;
+  text-transform: uppercase;
+  padding: 3px 8px;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--subtitle);
+}
+
+.admin-role-badge-super {
+  border-color: rgba(139, 157, 195, 0.55);
+  background: rgba(139, 157, 195, 0.14);
+  color: var(--title);
+}
+
+.admin-user {
+  font-size: 13px;
+  color: var(--subtitle);
+  max-width: 180px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .admin-header h1 {
   margin: 0 0 6px;
   font-size: 28px;
@@ -153,6 +201,14 @@
   background: rgba(181, 74, 74, 0.08);
 }
 
+.table-row-bulk-disabled td {
+  opacity: 0.45;
+}
+
+.table-row-bulk-disabled .col-select input {
+  cursor: not-allowed;
+}
+
 .table-wrap-delete-mode .table-row-clickable {
   cursor: pointer;
 }
@@ -185,6 +241,27 @@
 
 .table-wrap table.table-stretch col.col-updated-at {
   width: 184px;
+}
+
+.table-wrap table.table-stretch col.col-password-hash {
+  width: 152px;
+  min-width: 152px;
+}
+
+.table-wrap table.table-stretch col.col-description-min,
+.table-wrap thead th.col-description-min,
+.table-wrap tbody td.col-description-min {
+  min-width: 172px;
+}
+
+.table-wrap thead th.col-description-min {
+  padding-right: 12px;
+}
+
+.table-wrap th.cell-header-full > .cell-inner {
+  overflow: visible;
+  text-overflow: clip;
+  max-width: none;
 }
 
 .table-wrap table.table-stretch .col-id-fixed {
@@ -247,10 +324,27 @@
   text-overflow: ellipsis;
 }
 
+.table-wrap thead th.col-flex,
+.table-wrap thead th.col-flex-expanded {
+  overflow: visible;
+  text-overflow: clip;
+}
+
 .table-wrap table.table-stretch .col-flex > .cell-inner {
   overflow: hidden;
   text-overflow: ellipsis;
   max-width: 100%;
+}
+
+.table-wrap thead th .th-sort-inner {
+  overflow: visible;
+  max-width: none;
+}
+
+.table-wrap thead th .cell-inner {
+  overflow: visible;
+  text-overflow: clip;
+  max-width: none;
 }
 
 .table-wrap table.table-stretch .col-flex-expanded,
@@ -285,6 +379,39 @@ th {
   letter-spacing: 0.35px;
   color: var(--subtitle);
   background: var(--bg);
+}
+
+.th-sortable {
+  cursor: pointer;
+  user-select: none;
+}
+
+.th-sortable:hover {
+  color: var(--title);
+}
+
+.th-sort-active {
+  color: var(--title);
+}
+
+.th-sort-inner {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  max-width: none;
+}
+
+.th-sort-indicator {
+  flex-shrink: 0;
+  font-size: 10px;
+  line-height: 1;
+  color: var(--subtitle);
+  opacity: 0.55;
+}
+
+.th-sort-active .th-sort-indicator {
+  color: var(--accent);
+  opacity: 1;
 }
 
 tbody tr:last-child td {
@@ -404,6 +531,31 @@ tbody tr:last-child td {
   line-height: 1.45;
   color: var(--title);
   word-break: break-word;
+}
+
+.detail-secret {
+  display: inline-block;
+  max-width: 100%;
+  cursor: default;
+}
+
+.detail-secret-mask {
+  letter-spacing: 0.15em;
+}
+
+.detail-secret-value {
+  display: none;
+  font-family: ui-monospace, Consolas, monospace;
+  font-size: 12px;
+  word-break: break-all;
+}
+
+.detail-secret:hover .detail-secret-mask {
+  display: none;
+}
+
+.detail-secret:hover .detail-secret-value {
+  display: inline;
 }
 
 .detail-value-long pre {

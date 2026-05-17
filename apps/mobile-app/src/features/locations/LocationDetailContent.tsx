@@ -1,13 +1,25 @@
-import { formatAddressJsonUkrLine } from "@/src/features/api/addressJsonDisplay";
+import {
+  formatAddressJsonFullLine,
+  formatAddressJsonShortTitle,
+  formatAddressJsonUkrLine,
+} from "@/src/features/api/addressJsonDisplay";
 import {
   formatLocationDate,
   type LocationDetailDto,
   type LocationUniversityObjectDto,
 } from "@/src/features/api/locationsClient";
 import { globalColors } from "@/src/styles/styles";
+import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { Image } from "expo-image";
-import { StyleSheet, Text, View } from "react-native";
+import { useCallback, useState } from "react";
+import { Pressable, StyleSheet, Text, View } from "react-native";
 import { locationCardStyles as styles } from "./locationCardStyles";
+import UniversityObjectDetailModal from "./UniversityObjectDetailModal";
+import {
+  iconForUniversityObjectType,
+  UNIVERSITY_OBJECT_ICON_SIZE,
+} from "./universityObjectTypeIcon";
+import { sortUniversityObjectsForDisplay } from "./universityObjectSort";
 
 type Props = {
   location: LocationDetailDto;
@@ -15,17 +27,25 @@ type Props = {
 };
 
 function formatObjectsList(loc: LocationDetailDto): LocationUniversityObjectDto[] {
-  return loc.objects && loc.objects.length > 0 ? loc.objects : [];
+  if (!loc.objects?.length) return [];
+  return sortUniversityObjectsForDisplay(loc.objects);
 }
 
 export function locationCardTitle(location: LocationDetailDto): string {
+  const shortFromAddress = formatAddressJsonShortTitle(location.addressJson);
+  if (shortFromAddress) return shortFromAddress;
+
   const name = location.name?.trim();
   return name || "Місце на карті";
 }
 
 export function locationAddressText(location: LocationDetailDto): string | null {
+  const fullFromJson = formatAddressJsonFullLine(location.addressJson);
+  if (fullFromJson?.trim()) return fullFromJson.trim();
+
   const plain = location.address?.trim();
   if (plain) return plain;
+
   const fromJson = formatAddressJsonUkrLine(location.addressJson);
   if (fromJson?.trim()) return fromJson.trim();
   return null;
@@ -40,8 +60,61 @@ export function LocationDetailSections({
   const imageUrl = location.imageUrl?.trim() || null;
   const objects = formatObjectsList(location);
   const highlightId = location.highlightedObjectId?.trim();
-  const showObjectsSection = objects.length > 1;
+  const showObjectsSection = objects.length > 0;
   const updatedLine = formatLocationDate(location.updatedAt);
+  const [selectedObject, setSelectedObject] =
+    useState<LocationUniversityObjectDto | null>(null);
+
+  const openObjectDetail = useCallback((o: LocationUniversityObjectDto) => {
+    setSelectedObject(o);
+  }, []);
+
+  const closeObjectDetail = useCallback(() => {
+    setSelectedObject(null);
+  }, []);
+
+  const objectsCard = showObjectsSection ? (
+    <View style={styles.card}>
+      <Text style={styles.sectionLabel}>Тут знаходяться</Text>
+      {objects.map((o, i) => {
+        const highlighted = highlightId && o.id === highlightId;
+        return (
+          <Pressable
+            key={o.id}
+            accessibilityRole="button"
+            accessibilityHint="Відкрити повну інформацію"
+            onPress={() => openObjectDetail(o)}
+            style={({ pressed }) => [
+              detailStyles.objRow,
+              i === 0 && detailStyles.objRowFirst,
+              highlighted && detailStyles.objRowHighlight,
+              pressed && detailStyles.objRowPressed,
+            ]}
+          >
+            <View style={detailStyles.objIconWrap}>
+              <MaterialCommunityIcons
+                name={iconForUniversityObjectType(o.type, o.typeName)}
+                size={UNIVERSITY_OBJECT_ICON_SIZE}
+                color={globalColors.title}
+              />
+            </View>
+            <View style={detailStyles.objBody}>
+              <Text style={detailStyles.objName}>{o.name}</Text>
+              {o.typeName?.trim() ? (
+                <Text style={detailStyles.objMeta}>{o.typeName.trim()}</Text>
+              ) : null}
+            </View>
+            <MaterialCommunityIcons
+              name="chevron-right"
+              size={20}
+              color={globalColors.icon}
+              style={detailStyles.objChevron}
+            />
+          </Pressable>
+        );
+      })}
+    </View>
+  ) : null;
 
   return (
     <>
@@ -49,8 +122,11 @@ export function LocationDetailSections({
         <Text style={styles.headline}>{headline}</Text>
       ) : null}
 
+      {objectsCard}
+
       {imageUrl ? (
         <View style={styles.card}>
+          <Text style={styles.sectionLabel}>Фото</Text>
           <Image
             source={{ uri: imageUrl }}
             style={styles.heroImage}
@@ -62,42 +138,8 @@ export function LocationDetailSections({
 
       {addressText ? (
         <View style={styles.card}>
+          <Text style={styles.sectionLabel}>Адреса</Text>
           <Text style={styles.bodyText}>{addressText}</Text>
-        </View>
-      ) : null}
-
-      {showObjectsSection ? (
-        <View style={styles.card}>
-          <Text style={styles.sectionLabel}>Тут знаходяться</Text>
-          {objects.map((o, i) => {
-            const highlighted = highlightId && o.id === highlightId;
-            return (
-              <View
-                key={o.id}
-                style={[
-                  detailStyles.objRow,
-                  i === 0 && detailStyles.objRowFirst,
-                  highlighted && detailStyles.objRowHighlight,
-                ]}
-              >
-                <Text style={detailStyles.objName}>{o.name}</Text>
-                {o.typeName ? (
-                  <Text style={detailStyles.objType}>{o.typeName}</Text>
-                ) : null}
-                {o.floor != null && Number.isFinite(o.floor) ? (
-                  <Text style={detailStyles.objMeta}>Поверх: {o.floor}</Text>
-                ) : null}
-                {o.roomNumber ? (
-                  <Text style={detailStyles.objMeta}>
-                    Аудиторія: {o.roomNumber}
-                  </Text>
-                ) : null}
-                {o.description?.trim() ? (
-                  <Text style={detailStyles.objDesc}>{o.description.trim()}</Text>
-                ) : null}
-              </View>
-            );
-          })}
         </View>
       ) : null}
 
@@ -107,21 +149,49 @@ export function LocationDetailSections({
           <Text style={styles.bodyText}>{updatedLine}</Text>
         </View>
       ) : null}
+
+      <UniversityObjectDetailModal
+        object={selectedObject}
+        locationTitle={headline}
+        onClose={closeObjectDetail}
+      />
     </>
   );
 }
 
 const detailStyles = StyleSheet.create({
   objRow: {
-    marginTop: 10,
-    paddingTop: 10,
+    flexDirection: "row",
+    alignItems: "center",
+    marginTop: 14,
+    paddingTop: 14,
     borderTopWidth: 1,
     borderTopColor: globalColors.border,
     borderRadius: 8,
     paddingHorizontal: 4,
+    paddingVertical: 2,
+  },
+  objRowPressed: {
+    opacity: 0.88,
+  },
+  objIconWrap: {
+    width: UNIVERSITY_OBJECT_ICON_SIZE,
+    height: UNIVERSITY_OBJECT_ICON_SIZE,
+    marginRight: 10,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  objBody: {
+    flex: 1,
+    minWidth: 0,
+    paddingRight: 4,
+  },
+  objChevron: {
+    marginLeft: 4,
+    alignSelf: "center",
   },
   objRowFirst: {
-    marginTop: 0,
+    marginTop: 14,
     paddingTop: 0,
     borderTopWidth: 0,
   },
@@ -135,22 +205,11 @@ const detailStyles = StyleSheet.create({
   },
   objName: {
     fontSize: 15,
-    fontWeight: "600",
+    lineHeight: 22,
+    fontWeight: "400",
     color: globalColors.title,
   },
-  objType: {
-    marginTop: 4,
-    fontSize: 13,
-    fontWeight: "500",
-    color: globalColors.accent,
-  },
   objMeta: {
-    marginTop: 4,
-    fontSize: 14,
-    lineHeight: 20,
-    color: globalColors.subtitle,
-  },
-  objDesc: {
     marginTop: 6,
     fontSize: 14,
     lineHeight: 20,

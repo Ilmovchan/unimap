@@ -1,16 +1,24 @@
+using api.Auth;
+
 namespace api.AdminEndpoints;
 
 public static class AdminEndpointsExtensions
 {
     public static void MapAdminEndpoints(this IEndpointRouteBuilder app)
     {
-        var group = app.MapGroup("/api/admin");
+        var admin = app.MapGroup("/api/admin");
 
-        group.MapLocationTypeAdminEndpoints();
-        group.MapLocationAdminEndpoints();
-        group.MapUniversityObjectTypeAdminEndpoints();
-        group.MapUniversityObjectAdminEndpoints();
-        group.MapNewsAdminEndpoints();
-        group.MapAdminAdminEndpoints();
+        admin.MapAuthAdminEndpoints();
+
+        var secured = admin.MapGroup("").RequireAuthorization();
+
+        secured.MapLocationTypeAdminEndpoints();
+        secured.MapLocationAdminEndpoints();
+        secured.MapUniversityObjectTypeAdminEndpoints();
+        secured.MapUniversityObjectAdminEndpoints();
+        secured.MapNewsAdminEndpoints();
+
+        var superAdmin = secured.MapGroup("").RequireAuthorization(AuthPolicies.SuperAdmin);
+        superAdmin.MapAdminAdminEndpoints();
     }
 }

@@ -2,7 +2,7 @@ using System.Globalization;
 
 namespace infrastructure.GeoService;
 
-public class NominatimGeoService : IGeoProvider
+public class NominatimGeoProvider : IGeoProvider
 {
     private static readonly HttpClient HttpClient = new();
 

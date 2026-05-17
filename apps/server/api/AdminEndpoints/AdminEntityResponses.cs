@@ -1,3 +1,4 @@
+using domain;
 using domain.Entities;
 
 namespace api.AdminEndpoints;
@@ -24,7 +25,7 @@ internal static class AdminEntityResponses
             entity.Latitude,
             entity.Longitude,
             entity.Description,
-            imageUrl = entity.ImageUrl,
+            imageUrl = LocationPhotoResolver.MainImageUrl(entity),
             addressJson = entity.AddressJson,
             createdAt = entity.CreatedAt,
             updatedAt = entity.UpdatedAt,
@@ -40,7 +41,7 @@ internal static class AdminEntityResponses
             latitude = entity.Latitude,
             longitude = entity.Longitude,
             entity.Description,
-            imageUrl = entity.ImageUrl,
+            imageUrl = LocationPhotoResolver.MainImageUrl(entity),
             addressJson = entity.AddressJson,
             createdAt = entity.CreatedAt,
             updatedAt = entity.UpdatedAt,
@@ -103,6 +104,16 @@ internal static class AdminEntityResponses
             role = entity.Role.ToStorage(),
             createdAt = entity.CreatedAt,
             updatedAt = entity.UpdatedAt,
+            lastLoginAt = entity.LastLoginAt,
+        };
+
+    internal static object AdminPublic(Admin entity) =>
+        new
+        {
+            entity.Id,
+            entity.Username,
+            entity.Email,
+            role = entity.Role.ToStorage(),
             lastLoginAt = entity.LastLoginAt,
         };
 }

@@ -14,7 +14,9 @@ import {
   adminUpdate,
   AdminApiError,
 } from '../api/adminApi'
+import { SUPER_ADMIN_ROLE } from '../api/authApi'
 import type { AdminTable, TableField, TableLayoutMode } from '../config/tables'
+import { useAuth } from '../auth/AuthContext'
 import EntityDetailModal from './EntityDetailModal'
 
 type Row = Record<string, unknown> & { id: string }
@@ -39,6 +41,8 @@ function rowToForm(row: Row, fields: TableField[]): Record<string, string> {
     const value = row[field.key]
     if (field.type === 'checkbox') {
       form[field.key] = value ? 'true' : 'false'
+    } else if (field.type === 'password') {
+      form[field.key] = ''
     } else if (value !== null && value !== undefined) {
       form[field.key] = String(value)
     }
@@ -62,12 +66,14 @@ function formToPayload(
     if (!raw && isEdit) continue
     if (!raw && !field.required) continue
 
+    const payloadKey = field.payloadKey ?? field.key
+
     switch (field.type) {
       case 'number':
-        payload[field.key] = raw === '' ? null : Number(raw)
+        payload[payloadKey] = raw === '' ? null : Number(raw)
         break
       default:
-        payload[field.key] = raw
+        payload[payloadKey] = raw
     }
   }
   return payload
@@ -85,31 +91,53 @@ function formatCell(value: unknown, field: TableField): string {
     if (!text) return '—'
     return text.length > 56 ? `${text.slice(0, 56)}…` : text
   }
-  if (field.key === 'imageUrl' || field.key === 'passwordHash') {
+  if (field.key === 'passwordHash') {
+    const text = String(value).trim()
+    return text ? '••••••••' : '—'
+  }
+  if (field.key === 'imageUrl') {
     const text = String(value).trim()
     if (!text) return '—'
-    const limit = field.key === 'passwordHash' ? 32 : 48
-    return text.length > limit ? `${text.slice(0, limit)}…` : text
+    return text.length > 48 ? `${text.slice(0, 48)}…` : text
   }
   return String(value)
 }
 
 const FLEX_COL_MIN = 88
 const ADDRESS_JSON_WIDTH = 260
+/** header label + sort control (e.g. Description) */
+const DESCRIPTION_COL_MIN = 172
 const FIXED_COL_WIDTH = {
   id: 320,
   createdAt: 168,
   updatedAt: 184,
+  lastLoginAt: 184,
+  passwordHash: 152,
   addressJson: ADDRESS_JSON_WIDTH,
 } as const
-const FIXED_COL_TOTAL = FIXED_COL_WIDTH.id + FIXED_COL_WIDTH.createdAt + FIXED_COL_WIDTH.updatedAt
+const FIXED_COL_TOTAL =
+  FIXED_COL_WIDTH.id +
+  FIXED_COL_WIDTH.createdAt +
+  FIXED_COL_WIDTH.updatedAt +
+  FIXED_COL_WIDTH.lastLoginAt
 
 function isTitleColumn(field: TableField): boolean {
-  return field.key === 'title' || field.key === 'titleUk'
+  return (
+    field.key === 'title' ||
+    field.key === 'titleUk' ||
+    field.key === 'locationTitle' ||
+    field.key === 'locationTypeTitle' ||
+    field.key === 'objectTypeTitleUk'
+  )
 }
 
 function isWideFlexColumn(field: TableField): boolean {
   return field.type === 'textarea' || field.key === 'content' || field.key === 'description'
+}
+
+function minListColumnWidth(field: TableField): number {
+  if (field.key === 'description' || field.key === 'content') return DESCRIPTION_COL_MIN
+  return 0
 }
 
 function isFixedDataColumn(field: TableField): boolean {
@@ -132,7 +160,8 @@ function estimateTextWidth(field: TableField, rows: Row[], min = 88, max = 640):
 }
 
 function estimateFlexColumnWidth(field: TableField, rows: Row[]): number {
-  return estimateTextWidth(field, rows, FLEX_COL_MIN, 960)
+  const min = Math.max(FLEX_COL_MIN, minListColumnWidth(field))
+  return Math.max(min, estimateTextWidth(field, rows, min, 960))
 }
 
 function distributeWideColumnBudget(
@@ -175,6 +204,7 @@ function fixedWidths(): Record<string, number> {
     id: FIXED_COL_WIDTH.id,
     createdAt: FIXED_COL_WIDTH.createdAt,
     updatedAt: FIXED_COL_WIDTH.updatedAt,
+    lastLoginAt: FIXED_COL_WIDTH.lastLoginAt,
   }
 }
 
@@ -187,9 +217,14 @@ function computeCompactLayout(
   let middleTotal = 0
 
   for (const field of middleFields) {
-    const w = isTitleColumn(field)
+    let w = isTitleColumn(field)
       ? estimateTitleWidth(field, rows)
       : estimateTextWidth(field, rows, FLEX_COL_MIN, 200)
+    if (field.key === 'passwordHash') {
+      w = Math.max(w, FIXED_COL_WIDTH.passwordHash)
+    }
+    const minW = minListColumnWidth(field)
+    if (minW > 0) w = Math.max(w, minW)
     widths[field.key] = w
     middleTotal += w
   }
@@ -231,7 +266,10 @@ function computeExpandLayout(
   let budget = Math.max(0, tableWidth - FIXED_COL_TOTAL - titleTotal - addressJsonTotal)
 
   for (const field of narrow) {
-    const w = Math.min(132, estimateTextWidth(field, rows, 72, 132))
+    let w = Math.min(132, estimateTextWidth(field, rows, 72, 132))
+    if (field.key === 'passwordHash') {
+      w = Math.max(w, FIXED_COL_WIDTH.passwordHash)
+    }
     widths[field.key] = w
     budget -= w
   }
@@ -239,7 +277,7 @@ function computeExpandLayout(
   const wideMins = wide.map((f) => estimateFlexColumnWidth(f, rows))
 
   if (wide.length > 0) {
-    distributeWideColumnBudget(wide, wideMins, budget, widths)
+    distributeWideColumnBudget(wide, wideMins, Math.max(budget, wideMins.reduce((s, w) => s + w, 0)), widths)
   }
 
   let middleTotal = 0
@@ -291,7 +329,9 @@ function useTableColumnLayout(
 function stretchColClass(field: TableField): string {
   if (field.key === 'id') return 'col-id-fixed'
   if (field.key === 'addressJson') return 'col-address-json-fixed'
-  if (field.key === 'updatedAt') return 'col-updated-at'
+  if (field.key === 'passwordHash') return 'col-password-hash'
+  if (field.key === 'description' || field.key === 'content') return 'col-description-min'
+  if (field.key === 'updatedAt' || field.key === 'lastLoginAt') return 'col-updated-at'
   if (field.key === 'createdAt') return 'col-datetime'
   if (isTitleColumn(field)) return 'col-title'
   return 'col-flex'
@@ -309,7 +349,7 @@ function bodyCellClassName(field: TableField, colWidths: Record<string, number>,
     parts.push('cell-mono')
   }
   if (field.type === 'datetime') parts.push('cell-datetime')
-  if (field.key === 'updatedAt') parts.push('cell-updated-at')
+  if (field.key === 'updatedAt' || field.key === 'lastLoginAt') parts.push('cell-updated-at')
   if (field.key === 'addressJson') parts.push('cell-address-json')
   if (field.key === 'imageUrl' || field.key === 'passwordHash') parts.push('cell-collapsed')
   const width = colWidths[field.key]
@@ -326,8 +366,51 @@ function bodyCellClassName(field: TableField, colWidths: Record<string, number>,
 
 function headerCellClassName(field: TableField): string {
   const parts = [stretchColClass(field)]
-  if (field.key === 'updatedAt') parts.push('cell-updated-at')
+  if (field.key === 'updatedAt' || field.key === 'lastLoginAt') parts.push('cell-updated-at')
+  if (field.key === 'passwordHash') parts.push('cell-header-full')
   return parts.join(' ')
+}
+
+type SortDir = 'asc' | 'desc'
+
+type SortState = {
+  key: string
+  dir: SortDir
+}
+
+function getSortValue(value: unknown, field: TableField): string | number | boolean | null {
+  if (value === null || value === undefined || value === '') return null
+  if (field.type === 'checkbox') return Boolean(value)
+  if (field.type === 'number') {
+    const n = Number(value)
+    return Number.isNaN(n) ? null : n
+  }
+  if (field.type === 'datetime') {
+    const t = new Date(String(value)).getTime()
+    return Number.isNaN(t) ? null : t
+  }
+  return String(value).toLocaleLowerCase('uk')
+}
+
+function compareRows(a: Row, b: Row, field: TableField, dir: SortDir): number {
+  const va = getSortValue(a[field.key], field)
+  const vb = getSortValue(b[field.key], field)
+  const mult = dir === 'asc' ? 1 : -1
+
+  if (va === null && vb === null) return 0
+  if (va === null) return 1
+  if (vb === null) return -1
+
+  if (typeof va === 'number' && typeof vb === 'number') return mult * (va - vb)
+  if (typeof va === 'boolean' && typeof vb === 'boolean') {
+    return mult * (Number(va) - Number(vb))
+  }
+  return mult * String(va).localeCompare(String(vb), 'uk')
+}
+
+function sortIndicator(sort: SortState | null, fieldKey: string): string {
+  if (sort?.key !== fieldKey) return '↕'
+  return sort.dir === 'asc' ? '↑' : '↓'
 }
 
 function fkOptionLabel(item: Row, field: TableField): string {
@@ -339,6 +422,7 @@ function fkOptionLabel(item: Row, field: TableField): string {
 }
 
 export default function EntityCrudPanel({ table }: Props) {
+  const { user } = useAuth()
   const [rows, setRows] = useState<Row[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -356,6 +440,7 @@ export default function EntityCrudPanel({ table }: Props) {
   const [bulkDeleteMode, setBulkDeleteMode] = useState(false)
   const [bulkSelectedIds, setBulkSelectedIds] = useState<Set<string>>(() => new Set())
   const [bulkDeleting, setBulkDeleting] = useState(false)
+  const [sort, setSort] = useState<SortState | null>(null)
 
   const listFields = table.fields.filter((f) => f.list)
   const { middle: middleListFields, tail: tailListFields } = useMemo(
@@ -370,6 +455,35 @@ export default function EntityCrudPanel({ table }: Props) {
     rows,
     layoutMode,
   )
+  const canDeleteRow = useCallback(
+    (row: Row) => {
+      if (table.id !== 'admins') return true
+      if (!user) return false
+      if (row.id === user.id) return false
+      return row.role !== SUPER_ADMIN_ROLE
+    },
+    [table.id, user],
+  )
+
+  const deletableRows = useMemo(
+    () => rows.filter(canDeleteRow),
+    [rows, canDeleteRow],
+  )
+
+  const sortedRows = useMemo(() => {
+    if (!sort) return rows
+    const field = listFields.find((f) => f.key === sort.key)
+    if (!field) return rows
+    return [...rows].sort((a, b) => compareRows(a, b, field, sort.dir))
+  }, [rows, sort, listFields])
+
+  const toggleSort = (key: string) => {
+    setSort((prev) => {
+      if (prev?.key === key) return { key, dir: prev.dir === 'asc' ? 'desc' : 'asc' }
+      return { key, dir: 'asc' }
+    })
+  }
+
   const fkResources = useMemo(
     () => [
       ...new Set(
@@ -403,6 +517,7 @@ export default function EntityCrudPanel({ table }: Props) {
     setFkOptions({})
     setBulkDeleteMode(false)
     setBulkSelectedIds(new Set())
+    setSort(null)
   }, [table, load, formFields])
 
   useEffect(() => {
@@ -462,7 +577,15 @@ export default function EntityCrudPanel({ table }: Props) {
     setSaving(true)
     setError(null)
     try {
-      const payload = formToPayload(form, formFields, editingId !== null)
+      let payload = formToPayload(form, formFields, editingId !== null)
+      if (table.id === 'admins') {
+        const plainPassword = form.password?.trim()
+        if (plainPassword) payload = { ...payload, passwordHash: plainPassword }
+        const { password: _removed, ...rest } = payload as Record<string, unknown> & {
+          password?: unknown
+        }
+        payload = rest
+      }
       if (editingId) {
         await adminUpdate(table.resource, editingId, payload)
       } else {
@@ -478,6 +601,15 @@ export default function EntityCrudPanel({ table }: Props) {
   }
 
   const onDelete = async (id: string) => {
+    const row = rows.find((r) => r.id === id)
+    if (row && !canDeleteRow(row)) {
+      setError(
+        row.id === user?.id
+          ? 'Неможливо видалити власний обліковий запис.'
+          : 'Обліковий запис super_admin не можна видалити.',
+      )
+      return
+    }
     if (!window.confirm('Видалити запис?')) return
     setError(null)
     try {
@@ -515,19 +647,23 @@ export default function EntityCrudPanel({ table }: Props) {
 
   const toggleBulkSelectAll = () => {
     setBulkSelectedIds((prev) =>
-      prev.size === rows.length ? new Set() : new Set(rows.map((row) => row.id)),
+      prev.size === deletableRows.length
+        ? new Set()
+        : new Set(deletableRows.map((row) => row.id)),
     )
   }
 
   const confirmBulkDelete = async () => {
-    if (bulkSelectedIds.size === 0) return
-    if (!window.confirm(`Видалити ${bulkSelectedIds.size} запис(ів)?`)) return
+    const ids = [...bulkSelectedIds].filter((id) => {
+      const row = rows.find((r) => r.id === id)
+      return row && canDeleteRow(row)
+    })
+    if (ids.length === 0) return
+    if (!window.confirm(`Видалити ${ids.length} запис(ів)?`)) return
     setBulkDeleting(true)
     setError(null)
     try {
-      await Promise.all(
-        [...bulkSelectedIds].map((id) => adminDelete(table.resource, id)),
-      )
+      await Promise.all(ids.map((id) => adminDelete(table.resource, id)))
       cancelBulkDelete()
       await load()
     } catch (err) {
@@ -612,27 +748,64 @@ export default function EntityCrudPanel({ table }: Props) {
                     <input
                       type="checkbox"
                       aria-label="Вибрати всі"
-                      checked={rows.length > 0 && bulkSelectedIds.size === rows.length}
+                      checked={
+                        deletableRows.length > 0 &&
+                        bulkSelectedIds.size === deletableRows.length
+                      }
+                      disabled={deletableRows.length === 0}
                       onChange={toggleBulkSelectAll}
                     />
                   </th>
                 ) : null}
                 {middleListFields.map((f) => (
-                  <th key={f.key} className={headerCellClassName(f)}>
-                    <span className="cell-inner">{f.label}</span>
+                  <th
+                    key={f.key}
+                    className={`${headerCellClassName(f)} th-sortable${sort?.key === f.key ? ' th-sort-active' : ''}`}
+                    onClick={() => toggleSort(f.key)}
+                    aria-sort={
+                      sort?.key === f.key
+                        ? sort.dir === 'asc'
+                          ? 'ascending'
+                          : 'descending'
+                        : 'none'
+                    }
+                  >
+                    <span className="th-sort-inner">
+                      <span className="cell-inner">{f.label}</span>
+                      <span className="th-sort-indicator" aria-hidden="true">
+                        {sortIndicator(sort, f.key)}
+                      </span>
+                    </span>
                   </th>
                 ))}
                 {hasGutter ? <th className="col-gutter" aria-hidden="true" /> : null}
                 {tailListFields.map((f) => (
-                  <th key={f.key} className={headerCellClassName(f)}>
-                    <span className="cell-inner">{f.label}</span>
+                  <th
+                    key={f.key}
+                    className={`${headerCellClassName(f)} th-sortable${sort?.key === f.key ? ' th-sort-active' : ''}`}
+                    onClick={() => toggleSort(f.key)}
+                    aria-sort={
+                      sort?.key === f.key
+                        ? sort.dir === 'asc'
+                          ? 'ascending'
+                          : 'descending'
+                        : 'none'
+                    }
+                  >
+                    <span className="th-sort-inner">
+                      <span className="cell-inner">{f.label}</span>
+                      <span className="th-sort-indicator" aria-hidden="true">
+                        {sortIndicator(sort, f.key)}
+                      </span>
+                    </span>
                   </th>
                 ))}
               </tr>
             </thead>
             <tbody>
-              {rows.map((row) => {
+              {sortedRows.map((row) => {
                 const bulkSelected = bulkSelectedIds.has(row.id)
+                const rowDeletable = canDeleteRow(row)
                 return (
                 <tr
                   key={row.id}
@@ -640,14 +813,16 @@ export default function EntityCrudPanel({ table }: Props) {
                     bulkDeleteMode
                       ? bulkSelected
                         ? ' table-row-bulk-selected'
-                        : ''
+                        : !rowDeletable
+                          ? ' table-row-bulk-disabled'
+                          : ''
                       : selectedRow?.id === row.id
                         ? ' table-row-selected'
                         : ''
                   }`}
                   onClick={() => {
                     if (bulkDeleteMode) {
-                      toggleBulkSelect(row.id)
+                      if (rowDeletable) toggleBulkSelect(row.id)
                       return
                     }
                     setSelectedRow(row)
@@ -655,8 +830,9 @@ export default function EntityCrudPanel({ table }: Props) {
                   onKeyDown={(e) => {
                     if (e.key === 'Enter' || e.key === ' ') {
                       e.preventDefault()
-                      if (bulkDeleteMode) toggleBulkSelect(row.id)
-                      else setSelectedRow(row)
+                      if (bulkDeleteMode) {
+                        if (rowDeletable) toggleBulkSelect(row.id)
+                      } else setSelectedRow(row)
                     }
                   }}
                   tabIndex={0}
@@ -671,6 +847,7 @@ export default function EntityCrudPanel({ table }: Props) {
                         type="checkbox"
                         aria-label="Вибрати запис"
                         checked={bulkSelected}
+                        disabled={!rowDeletable}
                         onChange={() => toggleBulkSelect(row.id)}
                       />
                     </td>
@@ -715,6 +892,7 @@ export default function EntityCrudPanel({ table }: Props) {
           onClose={() => setSelectedRow(null)}
           onEdit={() => openEdit(selectedRow)}
           onDelete={() => void onDelete(selectedRow.id)}
+          canDelete={canDeleteRow(selectedRow)}
         />
       ) : null}
 
@@ -784,7 +962,14 @@ export default function EntityCrudPanel({ table }: Props) {
                     ) : (
                       <input
                         id={field.key}
-                        type={field.type === 'number' ? 'number' : 'text'}
+                        type={
+                          field.type === 'number'
+                            ? 'number'
+                            : field.type === 'password'
+                              ? 'password'
+                              : 'text'
+                        }
+                        autoComplete={field.type === 'password' ? 'new-password' : undefined}
                         step={field.type === 'number' ? 'any' : undefined}
                         value={form[field.key]}
                         onChange={(e) => updateField(field.key, e.target.value)}

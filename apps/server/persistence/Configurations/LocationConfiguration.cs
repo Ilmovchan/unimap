@@ -36,9 +36,6 @@ public sealed class LocationConfiguration : IEntityTypeConfiguration<Location>
         builder.Property(x => x.Description)
             .HasColumnName("description");
 
-        builder.Property(x => x.ImageUrl)
-            .HasColumnName("image_url");
-
         builder.Property(x => x.AddressJson)
             .HasColumnName("address_json")
             .HasColumnType("jsonb");

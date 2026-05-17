@@ -94,3 +94,23 @@
 .auth-page .btn-primary:hover {
   filter: brightness(0.95);
 }
+
+.auth-error {
+  margin: 0;
+  padding: 10px 12px;
+  font-size: 13px;
+  color: #8b2e2e;
+  background: #fdeaea;
+  border: 1px solid #e8b4b4;
+}
+
+.auth-loading {
+  margin: 0;
+  font-size: 14px;
+  color: var(--subtitle);
+}
+
+.auth-page .btn:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+}

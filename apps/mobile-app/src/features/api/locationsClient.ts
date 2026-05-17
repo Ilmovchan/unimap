@@ -1,4 +1,7 @@
-import { formatAddressJsonUkrLine } from "@/src/features/api/addressJsonDisplay";
+import {
+  formatAddressJsonShortTitle,
+  formatAddressJsonUkrLine,
+} from "@/src/features/api/addressJsonDisplay";
 import log from "loglevel";
 
 /** Елемент з GET /api/locations/:id — «об’єкт» університету. */
@@ -182,8 +185,12 @@ export function resolveMarkerKeyForMap(
 
 /** Заголовок маркера / картки: назва локації. */
 export function locationMapDisplayLabel(loc: LocationMapDto): string {
+  const short = formatAddressJsonShortTitle(loc.addressJson);
+  if (short) return short;
+
   const n = loc.name?.trim();
   if (n) return n;
+
   const line = formatAddressJsonUkrLine(loc.addressJson);
   if (line?.trim()) return line;
   return "Місце на карті";

@@ -1,47 +1,19 @@
-const API_BASE = import.meta.env.VITE_API_URL ?? ''
+import { ApiError, apiRequest } from './http'
 
-export class AdminApiError extends Error {
-  status: number
+export { ApiError as AdminApiError }
 
-  constructor(message: string, status: number) {
-    super(message)
-    this.name = 'AdminApiError'
-    this.status = status
-  }
-}
-
-async function parseError(res: Response): Promise<string> {
+async function request<T>(path: string, init?: RequestInit): Promise<T> {
   try {
-    const body = (await res.json()) as { error?: string }
-    if (body.error) return body.error
-  } catch {
-    /* ignore */
-  }
-  return res.statusText || `HTTP ${res.status}`
-}
-
-async function request<T>(
-  path: string,
-  init?: RequestInit,
-): Promise<T> {
-  const res = await fetch(`${API_BASE}${path}`, {
-    headers: { 'Content-Type': 'application/json', ...init?.headers },
-    ...init,
-  })
-
-  if (!res.ok) {
-    const message = await parseError(res)
-    if (res.status === 404 && path.startsWith('/api/admin/')) {
-      throw new AdminApiError(
-        `${message}. Перезапустіть API (dotnet run) — на порту 5286 може працювати стара збірка без /api/admin.`,
-        res.status,
+    return await apiRequest<T>(path, init)
+  } catch (err) {
+    if (err instanceof ApiError && err.status === 404 && path.startsWith('/api/admin/')) {
+      throw new ApiError(
+        `${err.message}. Перезапустіть API (dotnet run) — на порту 5286 може працювати стара збірка без /api/admin.`,
+        err.status,
       )
     }
-    throw new AdminApiError(message, res.status)
+    throw err
   }
-
-  if (res.status === 204) return undefined as T
-  return res.json() as Promise<T>
 }
 
 export function adminList<T>(resource: string): Promise<T[]> {
@@ -52,10 +24,7 @@ export function adminGet<T>(resource: string, id: string): Promise<T> {
   return request<T>(`/api/admin/${resource}/${id}`)
 }
 
-export function adminCreate<T>(
-  resource: string,
-  body: unknown,
-): Promise<T> {
+export function adminCreate<T>(resource: string, body: unknown): Promise<T> {
   return request<T>(`/api/admin/${resource}`, {
     method: 'POST',
     body: JSON.stringify(body),

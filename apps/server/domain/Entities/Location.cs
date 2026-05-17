@@ -16,8 +16,6 @@ public sealed class Location : ITimestampedEntity
 
     public string? Description { get; set; }
 
-    public string? ImageUrl { get; set; }
-    
     public string? AddressJson { get; set; }
 
     public DateTimeOffset CreatedAt { get; set; }
@@ -26,4 +24,7 @@ public sealed class Location : ITimestampedEntity
 
     public ICollection<UniversityObject> UniversityObjects { get; set; } =
         new List<UniversityObject>();
+
+    public ICollection<LocationPhoto> Photos { get; set; } =
+        new List<LocationPhoto>();
 }

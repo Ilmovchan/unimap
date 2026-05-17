@@ -40,6 +40,7 @@ public sealed class LocationRepository(IDbContextFactory<UniMapDbContext> dbCont
         return await context.Locations
             .AsNoTracking()
             .Include(l => l.LocationType)
+            .Include(l => l.Photos)
             .Include(l => l.UniversityObjects.OrderBy(o => o.Title))
             .ThenInclude(o => o.ObjectType)
             .OrderBy(x => x.Latitude)
@@ -57,6 +58,7 @@ public sealed class LocationRepository(IDbContextFactory<UniMapDbContext> dbCont
         return await context.Locations
             .AsNoTracking()
             .Include(l => l.LocationType)
+            .Include(l => l.Photos)
             .Include(l => l.UniversityObjects.OrderBy(o => o.Title))
             .ThenInclude(o => o.ObjectType)
             .FirstOrDefaultAsync(l => l.Id == id, cancellationToken);
