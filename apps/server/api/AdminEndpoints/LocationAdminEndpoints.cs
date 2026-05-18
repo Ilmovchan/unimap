@@ -1,6 +1,6 @@
-using domain.Entities;
-using Microsoft.EntityFrameworkCore;
-using persistence;
+using app.Abstractions.Administration;
+using app.Models.Admin;
+using domain.Abstractions;
 
 namespace api.AdminEndpoints;
 
@@ -18,122 +18,87 @@ public static class LocationAdminEndpoints
     }
 
     private static async Task<IResult> ListAsync(
-        IDbContextFactory<UniMapDbContext> dbFactory,
+        HttpRequest httpRequest,
+        IAdminLocationService service,
+        IPictureProvider pictureProvider,
         CancellationToken cancellationToken)
     {
-        await using var db = await dbFactory.CreateDbContextAsync(cancellationToken);
-        var items = await db.Locations
-            .AsNoTracking()
-            .Include(x => x.LocationType)
-            .Include(x => x.Photos)
-            .OrderBy(x => x.Title)
-            .ToListAsync(cancellationToken);
-        return Results.Ok(items.Select(AdminEntityResponses.LocationListItem));
+        var baseUrl = RequestBaseUrl.From(httpRequest);
+        var items = await service.ListAsync(cancellationToken);
+        return Results.Ok(
+            items.Select(x => AdminEntityResponses.LocationListItem(x, pictureProvider, baseUrl)));
     }
 
     private static async Task<IResult> GetByIdAsync(
         Guid id,
-        IDbContextFactory<UniMapDbContext> dbFactory,
+        HttpRequest httpRequest,
+        IAdminLocationService service,
+        IPictureProvider pictureProvider,
         CancellationToken cancellationToken)
     {
-        await using var db = await dbFactory.CreateDbContextAsync(cancellationToken);
-        var entity = await db.Locations
-            .AsNoTracking()
-            .Include(x => x.LocationType)
-            .Include(x => x.Photos)
-            .FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
-        return entity is null ? Results.NotFound() : Results.Ok(AdminEntityResponses.LocationListItem(entity));
+        var baseUrl = RequestBaseUrl.From(httpRequest);
+        var entity = await service.GetByIdAsync(id, cancellationToken);
+        return entity is null
+            ? Results.NotFound()
+            : Results.Ok(AdminEntityResponses.LocationListItem(entity, pictureProvider, baseUrl));
     }
 
     private static async Task<IResult> CreateAsync(
+        HttpRequest httpRequest,
         LocationWriteDto dto,
-        IDbContextFactory<UniMapDbContext> dbFactory,
+        IAdminLocationService service,
+        IPictureProvider pictureProvider,
         CancellationToken cancellationToken)
     {
-        if (dto.LocationTypeId == Guid.Empty || string.IsNullOrWhiteSpace(dto.Title))
-            return Results.BadRequest(new { error = "locationTypeId and title are required." });
+        var baseUrl = RequestBaseUrl.From(httpRequest);
+        var result = await service.CreateAsync(
+            new LocationAdminCreateCommand(
+                dto.Id,
+                dto.LocationTypeId,
+                dto.Title,
+                dto.Latitude,
+                dto.Longitude,
+                dto.Description,
+                dto.AddressJson),
+            cancellationToken);
 
-        var entity = new Location
-        {
-            Id = dto.Id ?? Guid.Empty,
-            LocationTypeId = dto.LocationTypeId,
-            Title = dto.Title.Trim(),
-            Latitude = dto.Latitude ?? 0,
-            Longitude = dto.Longitude ?? 0,
-            Description = dto.Description,
-            AddressJson = dto.AddressJson,
-        };
-
-        await using var db = await dbFactory.CreateDbContextAsync(cancellationToken);
-        if (!await db.LocationTypes.AnyAsync(x => x.Id == entity.LocationTypeId, cancellationToken))
-            return Results.BadRequest(new { error = "locationTypeId does not exist." });
-
-        db.Locations.Add(entity);
-        await db.SaveChangesAsync(cancellationToken);
-        var created = await LoadLocationListItemAsync(db, entity.Id, cancellationToken);
-        return Results.Created($"/api/admin/locations/{entity.Id}", created);
+        return result.ToHttpResult(location =>
+            Results.Created(
+                $"/api/admin/locations/{location.Id}",
+                AdminEntityResponses.LocationListItem(location, pictureProvider, baseUrl)));
     }
 
     private static async Task<IResult> UpdateAsync(
         Guid id,
+        HttpRequest httpRequest,
         LocationWriteDto dto,
-        IDbContextFactory<UniMapDbContext> dbFactory,
+        IAdminLocationService service,
+        IPictureProvider pictureProvider,
         CancellationToken cancellationToken)
     {
-        await using var db = await dbFactory.CreateDbContextAsync(cancellationToken);
-        var entity = await db.Locations.FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
-        if (entity is null)
-            return Results.NotFound();
+        var baseUrl = RequestBaseUrl.From(httpRequest);
+        var result = await service.UpdateAsync(
+            id,
+            new LocationAdminUpdateCommand(
+                dto.LocationTypeId,
+                dto.Title,
+                dto.Latitude,
+                dto.Longitude,
+                dto.Description,
+                dto.AddressJson),
+            cancellationToken);
 
-        if (dto.LocationTypeId != Guid.Empty)
-        {
-            if (!await db.LocationTypes.AnyAsync(x => x.Id == dto.LocationTypeId, cancellationToken))
-                return Results.BadRequest(new { error = "locationTypeId does not exist." });
-            entity.LocationTypeId = dto.LocationTypeId;
-        }
-
-        if (!string.IsNullOrWhiteSpace(dto.Title))
-            entity.Title = dto.Title.Trim();
-        if (dto.Latitude.HasValue)
-            entity.Latitude = dto.Latitude.Value;
-        if (dto.Longitude.HasValue)
-            entity.Longitude = dto.Longitude.Value;
-        if (dto.Description is not null)
-            entity.Description = dto.Description;
-        if (dto.AddressJson is not null)
-            entity.AddressJson = dto.AddressJson;
-
-        await db.SaveChangesAsync(cancellationToken);
-        var updated = await LoadLocationListItemAsync(db, entity.Id, cancellationToken);
-        return Results.Ok(updated);
-    }
-
-    private static async Task<object> LoadLocationListItemAsync(
-        UniMapDbContext db,
-        Guid id,
-        CancellationToken cancellationToken)
-    {
-        var entity = await db.Locations
-            .AsNoTracking()
-            .Include(x => x.LocationType)
-            .Include(x => x.Photos)
-            .FirstAsync(x => x.Id == id, cancellationToken);
-        return AdminEntityResponses.LocationListItem(entity);
+        return result.ToHttpResult(location =>
+            Results.Ok(AdminEntityResponses.LocationListItem(location, pictureProvider, baseUrl)));
     }
 
     private static async Task<IResult> DeleteAsync(
         Guid id,
-        IDbContextFactory<UniMapDbContext> dbFactory,
+        IAdminLocationService service,
         CancellationToken cancellationToken)
     {
-        await using var db = await dbFactory.CreateDbContextAsync(cancellationToken);
-        var entity = await db.Locations.FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
-        if (entity is null)
-            return Results.NotFound();
-
-        db.Locations.Remove(entity);
-        await db.SaveChangesAsync(cancellationToken);
-        return Results.NoContent();
+        var result = await service.DeleteAsync(id, cancellationToken);
+        return result.ToHttpResult(() => Results.NoContent());
     }
 
     private sealed record LocationWriteDto(

@@ -1,10 +1,10 @@
 using app.Abstractions;
+using domain.Abstractions.Public;
 using domain.Entities;
-using Unimap.Domain.Abstractions;
 
 namespace app.Services;
 
-public sealed class NewsService(INewsRepository newsRepository) : INewsService
+public sealed class NewsService(INewsPublicRepository newsRepository) : INewsService
 {
     public Task<IReadOnlyList<News>> GetActiveNewsAsync(
         CancellationToken cancellationToken = default)

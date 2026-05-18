@@ -23,6 +23,14 @@ export type LocationMarkerDto = {
   markerKey: string;
 };
 
+/** Фото локації з GET /api/locations/:id (поле photos). */
+export type LocationPhotoDto = {
+  id: string;
+  url: string;
+  altUk?: string | null;
+  isMain?: boolean;
+};
+
 /** Локація для списку / деталей. */
 export type LocationMapDto = {
   id: string;
@@ -37,6 +45,7 @@ export type LocationMapDto = {
   addressJson?: string | null;
   description?: string | null;
   imageUrl?: string | null;
+  photos?: LocationPhotoDto[];
   markerKey?: string | null;
   objects?: LocationUniversityObjectDto[];
   highlightedObjectId?: string | null;
@@ -238,6 +247,44 @@ function parseUniversityObjectsFromApi(
   return out.length ? out : undefined;
 }
 
+function parseLocationPhotosFromApi(raw: unknown): LocationPhotoDto[] | undefined {
+  if (!Array.isArray(raw) || raw.length === 0) return undefined;
+  const out: LocationPhotoDto[] = [];
+  for (const item of raw) {
+    if (typeof item !== "object" || item === null) continue;
+    const o = item as Record<string, unknown>;
+    const id = String(pickRaw(o, "id", "Id") ?? "").trim();
+    const urlRaw = pickRaw(o, "url", "Url", "imageUrl", "ImageUrl");
+    const url =
+      urlRaw === undefined || urlRaw === null ? "" : String(urlRaw).trim();
+    if (!id || !url) continue;
+    const alt = pickRaw(o, "altUk", "AltUk");
+    const altUk =
+      alt === undefined || alt === null ? null : String(alt).trim() || null;
+    const isMainRaw = pickRaw(o, "isMain", "IsMain");
+    const isMain =
+      isMainRaw === true ||
+      isMainRaw === "true" ||
+      isMainRaw === 1 ||
+      isMainRaw === "1";
+    out.push({ id, url, altUk, isMain });
+  }
+  return out.length ? out : undefined;
+}
+
+function resolveMainImageUrl(
+  imageUrl: string | null,
+  photos: LocationPhotoDto[] | undefined,
+): string | null {
+  const direct = imageUrl?.trim();
+  if (direct) return direct;
+  if (!photos?.length) return null;
+  const main = photos.find((p) => p.isMain && p.url?.trim());
+  if (main?.url?.trim()) return main.url.trim();
+  const first = photos.find((p) => p.url?.trim());
+  return first?.url?.trim() ?? null;
+}
+
 function normalizeLocationMap(raw: Record<string, unknown>): LocationMapDto {
   const id = String(pickRaw(raw, "id", "Id") ?? "");
   const lat = pickFiniteCoord(
@@ -292,9 +339,12 @@ function normalizeLocationMap(raw: Record<string, unknown>): LocationMapDto {
   const descr = pickRaw(raw, "description", "Description");
   const description =
     descr === undefined || descr === null ? null : String(descr);
+  const photos = parseLocationPhotosFromApi(pickRaw(raw, "photos", "Photos"));
   const img = pickRaw(raw, "imageUrl", "ImageUrl");
-  const imageUrl =
-    img === undefined || img === null ? null : String(img).trim() || null;
+  const imageUrl = resolveMainImageUrl(
+    img === undefined || img === null ? null : String(img).trim() || null,
+    photos,
+  );
 
   const highlightRaw = pickRaw(
     raw,
@@ -330,6 +380,7 @@ function normalizeLocationMap(raw: Record<string, unknown>): LocationMapDto {
     addressJson,
     description,
     imageUrl,
+    photos,
     markerKey,
     objects,
     highlightedObjectId,

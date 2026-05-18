@@ -1,4 +1,5 @@
 using domain;
+using domain.Abstractions;
 using domain.Entities;
 
 namespace api.AdminEndpoints;
@@ -31,7 +32,10 @@ internal static class AdminEntityResponses
             updatedAt = entity.UpdatedAt,
         };
 
-    internal static object LocationListItem(Location entity) =>
+    internal static object LocationListItem(
+        Location entity,
+        IPictureProvider? pictureProvider = null,
+        string? requestBaseUrl = null) =>
         new
         {
             entity.Id,
@@ -41,10 +45,26 @@ internal static class AdminEntityResponses
             latitude = entity.Latitude,
             longitude = entity.Longitude,
             entity.Description,
-            imageUrl = LocationPhotoResolver.MainImageUrl(entity),
+            imageUrl = LocationPhotoResolver.MainImageUrl(entity, pictureProvider, requestBaseUrl),
             addressJson = entity.AddressJson,
             createdAt = entity.CreatedAt,
             updatedAt = entity.UpdatedAt,
+        };
+
+    internal static object LocationPhoto(
+        LocationPhoto photo,
+        IPictureProvider pictureProvider,
+        string? requestBaseUrl) =>
+        new
+        {
+            photo.Id,
+            locationId = photo.LocationId,
+            url = pictureProvider.ResolvePublicUrl(photo, requestBaseUrl),
+            storageKey = photo.StorageKey,
+            altUk = photo.AltUk,
+            isMain = photo.IsMain,
+            createdAt = photo.CreatedAt,
+            updatedAt = photo.UpdatedAt,
         };
 
     internal static object UniversityObjectType(UniversityObjectType entity) =>

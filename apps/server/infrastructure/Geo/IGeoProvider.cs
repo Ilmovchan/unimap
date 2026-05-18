@@ -1,4 +1,4 @@
-namespace infrastructure.GeoService;
+namespace infrastructure.Geo;
 
 public interface IGeoProvider
 {

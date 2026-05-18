@@ -1,6 +1,4 @@
-using infrastructure.Dto;
-
-namespace infrastructure.RoutingService;
+namespace infrastructure.Routing;
 
 public interface IRoutingProvider
 {

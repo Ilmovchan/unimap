@@ -1,10 +1,9 @@
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
-using infrastructure.Auth;
+using app.Abstractions.Administration;
+using app.Models.Admin;
 using infrastructure.Jwt;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
-using persistence;
 
 namespace api.AdminEndpoints;
 
@@ -21,30 +20,24 @@ public static class AuthAdminEndpoints
 
     private static async Task<IResult> LoginAsync(
         LoginRequest request,
-        IDbContextFactory<UniMapDbContext> dbFactory,
-        IJwtTokenService jwtTokenService,
-        IAdminPasswordHasher passwordHasher,
+        IAdminAuthService authService,
+        IJwtTokenProvider jwtTokenService,
         IOptions<JwtOptions> jwtOptions,
         IHostEnvironment environment,
         HttpContext httpContext,
         CancellationToken cancellationToken)
     {
-        if (string.IsNullOrWhiteSpace(request.Email) || string.IsNullOrWhiteSpace(request.Password))
-            return Results.BadRequest(new { error = "email and password are required." });
+        var result = await authService.LoginAsync(
+            new AdminLoginCommand(request.Email, request.Password),
+            cancellationToken);
 
-        var email = request.Email.Trim().ToLowerInvariant();
+        if (!result.IsSuccess)
+            return Results.Json(new { error = result.Error }, statusCode: result.StatusCode);
 
-        await using var db = await dbFactory.CreateDbContextAsync(cancellationToken);
-        var admin = await db.Admins.FirstOrDefaultAsync(x => x.Email == email, cancellationToken);
-        if (admin is null || !passwordHasher.Verify(request.Password, admin.PasswordHash))
-            return Results.Unauthorized();
-
+        var admin = result.Value!;
         var options = jwtOptions.Value;
         var expiresAt = DateTimeOffset.UtcNow.AddMinutes(options.ExpireMinutes);
         var token = jwtTokenService.CreateToken(admin, expiresAt);
-
-        admin.LastLoginAt = DateTimeOffset.UtcNow;
-        await db.SaveChangesAsync(cancellationToken);
 
         httpContext.Response.Cookies.Append(
             options.CookieName,

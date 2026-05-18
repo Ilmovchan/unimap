@@ -1,6 +1,6 @@
 using System.Text.Json.Serialization;
 
-namespace infrastructure.Dto;
+namespace infrastructure.Routing;
 
 public class OpenRouteResponse
 {

@@ -15,3 +15,5 @@
 /Users/user/unimap/apps/server/infrastructure/obj/Debug/net9.0/refint/infrastructure.dll
 /Users/user/unimap/apps/server/infrastructure/obj/Debug/net9.0/infrastructure.pdb
 /Users/user/unimap/apps/server/infrastructure/obj/Debug/net9.0/ref/infrastructure.dll
+/Users/user/unimap/apps/server/infrastructure/bin/Debug/net9.0/app.dll
+/Users/user/unimap/apps/server/infrastructure/bin/Debug/net9.0/app.pdb

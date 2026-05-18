@@ -1,4 +1,4 @@
-using infrastructure.GeoService;
+using infrastructure.Geo;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -7,10 +7,6 @@ using persistence;
 
 namespace infrastructure.BackgroundServices;
 
-/// <summary>
-/// Для локацій без <c>address_json</c> викликає <see cref="IGeoProvider.GeoReverse"/> і зберігає JSON у БД.
-/// Повний прохід — раз на 24 години.
-/// </summary>
 public sealed class LocationAddressJsonBackfillWorker(
     ILogger<LocationAddressJsonBackfillWorker> logger,
     IServiceScopeFactory scopeFactory)

@@ -1,11 +1,11 @@
+using domain.Dto;
 using domain.Entities;
-using domain.Models;
 
 namespace app.Abstractions;
 
 public interface ILocationService
 {
-    Task<IReadOnlyList<LocationMarker>> GetLocationMarkersAsync(
+    Task<IReadOnlyList<LocationMarkerDto>> GetLocationMarkersAsync(
         CancellationToken cancellationToken = default);
 
     Task<IReadOnlyList<Location>> GetLocationsListAsync(

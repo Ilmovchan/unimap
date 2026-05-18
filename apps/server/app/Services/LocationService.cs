@@ -1,20 +1,20 @@
 using app.Abstractions;
+using domain.Abstractions.Public;
+using domain.Dto;
 using domain.Entities;
-using domain.Models;
-using Unimap.Domain.Abstractions;
 
 namespace app.Services;
 
 public sealed class LocationService : ILocationService
 {
-    private readonly ILocationRepository _locationRepository;
+    private readonly ILocationPublicRepository _locationRepository;
 
-    public LocationService(ILocationRepository locationRepository)
+    public LocationService(ILocationPublicRepository locationRepository)
     {
         _locationRepository = locationRepository;
     }
 
-    public Task<IReadOnlyList<LocationMarker>> GetLocationMarkersAsync(
+    public Task<IReadOnlyList<LocationMarkerDto>> GetLocationMarkersAsync(
         CancellationToken cancellationToken = default)
     {
         return _locationRepository.GetMarkersAsync(cancellationToken);

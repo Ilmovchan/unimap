@@ -1,3 +1,5 @@
+using domain.Abstractions;
+
 namespace infrastructure.Auth;
 
 public sealed class AdminPasswordHasher : IAdminPasswordHasher

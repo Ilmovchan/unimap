@@ -1,18 +1,17 @@
 using api.AdminEndpoints;
 using api.Auth;
 using api.Endpoints;
-using app.Abstractions;
-using app.Services;
+using app;
+using domain.Abstractions;
 using infrastructure;
 using domain.Entities;
 using infrastructure.Auth;
 using infrastructure.BackgroundServices;
+using infrastructure.Geo;
+using infrastructure.Pictures;
+using infrastructure.Routing;
 using Microsoft.EntityFrameworkCore;
-using infrastructure.GeoService;
-using infrastructure.RoutingService;
 using persistence;
-using persistence.Repositories;
-using Unimap.Domain.Abstractions;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -22,14 +21,13 @@ builder.Services.AddDbContextFactory<UniMapDbContext>(options =>
     options.UseNpgsql(connectionString);
 });
 
-builder.Services.AddScoped<ILocationRepository, LocationRepository>();
-builder.Services.AddScoped<ILocationService, LocationService>();
-builder.Services.AddScoped<INewsRepository, NewsRepository>();
-builder.Services.AddScoped<INewsService, NewsService>();
+builder.Services.AddPersistence();
+builder.Services.AddApplication();
 builder.Services.AddScoped<IRoutingProvider, OpenRouteServiceRoutingProvider>();
 builder.Services.AddScoped<IGeoProvider, NominatimGeoProvider>();
 builder.Services.AddHostedService<LocationAddressJsonBackfillWorker>();
 builder.Services.AddInfrastructure(builder.Configuration);
+builder.Services.AddPictureStorage(builder.Configuration);
 builder.Services.AddJwtCookieAuthentication(builder.Configuration);
 
 builder.Services.AddCors(options =>
@@ -59,9 +57,6 @@ if (app.Environment.IsDevelopment())
         var dbContextFactory = scope.ServiceProvider.GetRequiredService<IDbContextFactory<UniMapDbContext>>();
         await using var db = await dbContextFactory.CreateDbContextAsync();
         await db.Database.MigrateAsync();
-        await db.EnsureAdminsTableAsync();
-        await db.EnsureLocationTableAsync();
-        await db.EnsureLocationPhotoTableAsync();
 
         if (!await db.Admins.AnyAsync())
         {
@@ -83,6 +78,7 @@ app.UseCors();
 app.UseAuthentication();
 app.UseAuthorization();
 
+app.MapPictureEndpoints();
 app.MapLocationEndpoints();
 app.MapNewsEndpoints();
 app.MapNavigationEndpoints();

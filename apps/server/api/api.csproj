@@ -7,13 +7,6 @@
     </PropertyGroup>
 
     <ItemGroup>
-      <ProjectReference Include="..\app\app.csproj" />
-      <ProjectReference Include="..\domain\domain.csproj" />
-      <ProjectReference Include="..\infrastructure\infrastructure.csproj" />
-      <ProjectReference Include="..\persistence\persistence.csproj" />
-    </ItemGroup>
-
-    <ItemGroup>
       <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="9.0.6" />
       <PackageReference Include="Microsoft.EntityFrameworkCore" Version="9.0.6" />
       <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="9.0.6">
@@ -22,6 +15,13 @@
       </PackageReference>
       <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="9.0.4" />
       <PackageReference Include="Swashbuckle.AspNetCore" Version="10.1.7" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <ProjectReference Include="..\app\app.csproj" />
+      <ProjectReference Include="..\domain\domain.csproj" />
+      <ProjectReference Include="..\infrastructure\infrastructure.csproj" />
+      <ProjectReference Include="..\persistence\persistence.csproj" />
     </ItemGroup>
 
 </Project>

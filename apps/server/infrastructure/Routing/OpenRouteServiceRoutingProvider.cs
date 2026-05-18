@@ -1,7 +1,6 @@
 using System.Text.Json;
-using infrastructure.Dto;
 
-namespace infrastructure.RoutingService;
+namespace infrastructure.Routing;
 
 public class OpenRouteServiceRoutingProvider : IRoutingProvider
 {

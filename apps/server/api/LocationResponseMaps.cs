@@ -1,18 +1,19 @@
 using domain;
+using domain.Abstractions;
+using domain.Dto;
 using domain.Entities;
-using domain.Models;
 
 namespace api;
 
 public static class LocationResponseMaps
 {
-    public static object LocationMarker(LocationMarker marker) =>
+    public static object LocationMarker(LocationMarkerDto markerDto) =>
         new
         {
-            marker.Id,
-            latitude = marker.Latitude,
-            longitude = marker.Longitude,
-            markerKey = marker.MarkerKey,
+            markerDto.Id,
+            latitude = markerDto.Latitude,
+            longitude = markerDto.Longitude,
+            markerKey = markerDto.MarkerKey,
         };
 
     private static string ResolveMarkerKey(LocationType lt) =>
@@ -29,7 +30,10 @@ public static class LocationResponseMaps
         };
 
     /// <summary>Список локацій для карти (координати лише як latitude/longitude, об’єкти включно).</summary>
-    public static object LocationForMap(Location location) =>
+    public static object LocationForMap(
+        Location location,
+        IPictureProvider pictureProvider,
+        string? requestBaseUrl) =>
         new
         {
             location.Id,
@@ -40,7 +44,7 @@ public static class LocationResponseMaps
             latitude = location.Latitude,
             longitude = location.Longitude,
             location.Description,
-            imageUrl = LocationPhotoResolver.MainImageUrl(location),
+            imageUrl = LocationPhotoResolver.MainImageUrl(location, pictureProvider, requestBaseUrl),
             location.AddressJson,
             createdAt = location.CreatedAt,
             updatedAt = location.UpdatedAt,
@@ -51,7 +55,11 @@ public static class LocationResponseMaps
         };
 
     /// <summary>Деталі локації та внутрішні об’єкти.</summary>
-    public static object LocationDetail(Location location, Guid? highlightedObjectId = null) =>
+    public static object LocationDetail(
+        Location location,
+        IPictureProvider pictureProvider,
+        string? requestBaseUrl,
+        Guid? highlightedObjectId = null) =>
         new
         {
             location.Id,
@@ -62,7 +70,8 @@ public static class LocationResponseMaps
             latitude = location.Latitude,
             longitude = location.Longitude,
             location.Description,
-            imageUrl = LocationPhotoResolver.MainImageUrl(location),
+            imageUrl = LocationPhotoResolver.MainImageUrl(location, pictureProvider, requestBaseUrl),
+            photos = LocationPhotoResolver.PublicPhotos(location, pictureProvider, requestBaseUrl),
             location.AddressJson,
             createdAt = location.CreatedAt,
             updatedAt = location.UpdatedAt,

@@ -1,6 +1,5 @@
-using infrastructure.Dto;
-using infrastructure.GeoService;
-using infrastructure.RoutingService;
+using infrastructure.Geo;
+using infrastructure.Routing;
 using Microsoft.AspNetCore.Mvc;
 
 namespace api.Endpoints;

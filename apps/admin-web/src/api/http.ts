@@ -26,13 +26,7 @@ async function parseError(res: Response): Promise<string> {
   return res.statusText || `HTTP ${res.status}`
 }
 
-export async function apiRequest<T>(path: string, init?: RequestInit): Promise<T> {
-  const res = await fetch(`${API_BASE}${path}`, {
-    credentials: 'include',
-    headers: { 'Content-Type': 'application/json', ...init?.headers },
-    ...init,
-  })
-
+async function handleResponse<T>(res: Response, path: string): Promise<T> {
   if (!res.ok) {
     const message = await parseError(res)
     if (
@@ -47,4 +41,27 @@ export async function apiRequest<T>(path: string, init?: RequestInit): Promise<T
 
   if (res.status === 204) return undefined as T
   return res.json() as Promise<T>
+}
+
+export async function apiRequest<T>(path: string, init?: RequestInit): Promise<T> {
+  const res = await fetch(`${API_BASE}${path}`, {
+    credentials: 'include',
+    headers: { 'Content-Type': 'application/json', ...init?.headers },
+    ...init,
+  })
+  return handleResponse<T>(res, path)
+}
+
+/** Multipart / FormData (без Content-Type — boundary виставляє браузер). */
+export async function apiRequestForm<T>(
+  path: string,
+  formData: FormData,
+  init?: RequestInit,
+): Promise<T> {
+  const res = await fetch(`${API_BASE}${path}`, {
+    credentials: 'include',
+    ...init,
+    body: formData,
+  })
+  return handleResponse<T>(res, path)
 }

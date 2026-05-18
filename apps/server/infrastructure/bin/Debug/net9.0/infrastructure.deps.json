@@ -13,7 +13,7 @@
           "Microsoft.Extensions.Logging.Abstractions": "9.0.6",
           "Microsoft.Extensions.Options.ConfigurationExtensions": "9.0.6",
           "System.IdentityModel.Tokens.Jwt": "8.9.0",
-          "domain": "1.0.0",
+          "app": "1.0.0",
           "persistence": "1.0.0"
         },
         "runtime": {
@@ -307,6 +307,18 @@
           }
         }
       },
+      "app/1.0.0": {
+        "dependencies": {
+          "Microsoft.Extensions.DependencyInjection.Abstractions": "9.0.6",
+          "domain": "1.0.0"
+        },
+        "runtime": {
+          "app.dll": {
+            "assemblyVersion": "1.0.0.0",
+            "fileVersion": "1.0.0.0"
+          }
+        }
+      },
       "domain/1.0.0": {
         "runtime": {
           "domain.dll": {
@@ -518,6 +530,11 @@
       "sha512": "sha512-7Pu9UjF1+so0s8zgzcIxSxbRQoiM2DMdwazVGmNptX3O6gDfMyeWZBd/Zn6VueDteN0ZTHw2acsf6+mAe8UpMw==",
       "path": "system.identitymodel.tokens.jwt/8.9.0",
       "hashPath": "system.identitymodel.tokens.jwt.8.9.0.nupkg.sha512"
+    },
+    "app/1.0.0": {
+      "type": "project",
+      "serviceable": false,
+      "sha512": ""
     },
     "domain/1.0.0": {
       "type": "project",

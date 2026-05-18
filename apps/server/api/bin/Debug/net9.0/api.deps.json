@@ -826,8 +826,8 @@
       "System.Threading.Channels/7.0.0": {},
       "app/1.0.0": {
         "dependencies": {
-          "domain": "1.0.0",
-          "persistence": "1.0.0"
+          "Microsoft.Extensions.DependencyInjection.Abstractions": "9.0.6",
+          "domain": "1.0.0"
         },
         "runtime": {
           "app.dll": {
@@ -851,7 +851,7 @@
           "Microsoft.Extensions.Logging.Abstractions": "9.0.6",
           "Microsoft.Extensions.Options.ConfigurationExtensions": "9.0.6",
           "System.IdentityModel.Tokens.Jwt": "8.9.0",
-          "domain": "1.0.0",
+          "app": "1.0.0",
           "persistence": "1.0.0"
         },
         "runtime": {

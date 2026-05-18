@@ -1,5 +1,6 @@
 import { createElement, useEffect, type MouseEvent } from 'react'
 import type { AdminTable, TableField } from '../config/tables'
+import LocationPhotosPanel from './LocationPhotosPanel'
 
 type Row = Record<string, unknown> & { id: string }
 
@@ -74,7 +75,7 @@ export default function EntityDetailModal({
     createElement(
       el,
       {
-        className: 'detail-dialog',
+        className: `detail-dialog${table.id === 'locations' ? ' detail-dialog-wide' : ''}`,
         role: 'dialog',
         'aria-modal': true,
         'aria-labelledby': 'detail-title',
@@ -102,6 +103,12 @@ export default function EntityDetailModal({
           ),
         ),
       ),
+      table.id === 'locations'
+        ? createElement(LocationPhotosPanel, {
+            locationId: row.id,
+            locationTitle: String(row.title ?? '').trim() || undefined,
+          })
+        : null,
       createElement(
         'dl',
         { className: 'detail-fields' },

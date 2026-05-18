@@ -461,6 +461,20 @@
           }
         }
       },
+      "app/1.0.0": {
+        "type": "project",
+        "framework": ".NETCoreApp,Version=v9.0",
+        "dependencies": {
+          "Microsoft.Extensions.DependencyInjection.Abstractions": "9.0.6",
+          "domain": "1.0.0"
+        },
+        "compile": {
+          "bin/placeholder/app.dll": {}
+        },
+        "runtime": {
+          "bin/placeholder/app.dll": {}
+        }
+      },
       "domain/1.0.0": {
         "type": "project",
         "framework": ".NETCoreApp,Version=v9.0",
@@ -1203,6 +1217,11 @@
         "system.identitymodel.tokens.jwt.nuspec"
       ]
     },
+    "app/1.0.0": {
+      "type": "project",
+      "path": "../app/app.csproj",
+      "msbuildProject": "../app/app.csproj"
+    },
     "domain/1.0.0": {
       "type": "project",
       "path": "../domain/domain.csproj",
@@ -1221,7 +1240,7 @@
       "Microsoft.Extensions.Logging.Abstractions >= 9.0.6",
       "Microsoft.Extensions.Options.ConfigurationExtensions >= 9.0.6",
       "System.IdentityModel.Tokens.Jwt >= 8.9.0",
-      "domain >= 1.0.0",
+      "app >= 1.0.0",
       "persistence >= 1.0.0"
     ]
   },
@@ -1250,8 +1269,8 @@
         "net9.0": {
           "targetAlias": "net9.0",
           "projectReferences": {
-            "/Users/user/unimap/apps/server/domain/domain.csproj": {
-              "projectPath": "/Users/user/unimap/apps/server/domain/domain.csproj"
+            "/Users/user/unimap/apps/server/app/app.csproj": {
+              "projectPath": "/Users/user/unimap/apps/server/app/app.csproj"
             },
             "/Users/user/unimap/apps/server/persistence/persistence.csproj": {
               "projectPath": "/Users/user/unimap/apps/server/persistence/persistence.csproj"

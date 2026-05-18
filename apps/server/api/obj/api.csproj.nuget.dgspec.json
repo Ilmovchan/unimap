@@ -127,9 +127,6 @@
             "projectReferences": {
               "/Users/user/unimap/apps/server/domain/domain.csproj": {
                 "projectPath": "/Users/user/unimap/apps/server/domain/domain.csproj"
-              },
-              "/Users/user/unimap/apps/server/persistence/persistence.csproj": {
-                "projectPath": "/Users/user/unimap/apps/server/persistence/persistence.csproj"
               }
             }
           }
@@ -149,6 +146,12 @@
       "frameworks": {
         "net9.0": {
           "targetAlias": "net9.0",
+          "dependencies": {
+            "Microsoft.Extensions.DependencyInjection.Abstractions": {
+              "target": "Package",
+              "version": "[9.0.6, )"
+            }
+          },
           "imports": [
             "net461",
             "net462",
@@ -250,8 +253,8 @@
           "net9.0": {
             "targetAlias": "net9.0",
             "projectReferences": {
-              "/Users/user/unimap/apps/server/domain/domain.csproj": {
-                "projectPath": "/Users/user/unimap/apps/server/domain/domain.csproj"
+              "/Users/user/unimap/apps/server/app/app.csproj": {
+                "projectPath": "/Users/user/unimap/apps/server/app/app.csproj"
               },
               "/Users/user/unimap/apps/server/persistence/persistence.csproj": {
                 "projectPath": "/Users/user/unimap/apps/server/persistence/persistence.csproj"

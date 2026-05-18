@@ -14,6 +14,7 @@ public static class AdminEndpointsExtensions
 
         secured.MapLocationTypeAdminEndpoints();
         secured.MapLocationAdminEndpoints();
+        secured.MapLocationPhotoAdminEndpoints();
         secured.MapUniversityObjectTypeAdminEndpoints();
         secured.MapUniversityObjectAdminEndpoints();
         secured.MapNewsAdminEndpoints();

@@ -1,6 +1,5 @@
-using domain.Entities;
-using Microsoft.EntityFrameworkCore;
-using persistence;
+using app.Abstractions.Administration;
+using app.Models.Admin;
 
 namespace api.AdminEndpoints;
 
@@ -18,84 +17,56 @@ public static class NewsAdminEndpoints
     }
 
     private static async Task<IResult> ListAsync(
-        IDbContextFactory<UniMapDbContext> dbFactory,
+        IAdminNewsService service,
         CancellationToken cancellationToken)
     {
-        await using var db = await dbFactory.CreateDbContextAsync(cancellationToken);
-        var items = await db.News
-            .AsNoTracking()
-            .OrderByDescending(x => x.CreatedAt)
-            .ToListAsync(cancellationToken);
+        var items = await service.ListAsync(cancellationToken);
         return Results.Ok(items.Select(AdminEntityResponses.News));
     }
 
     private static async Task<IResult> GetByIdAsync(
         Guid id,
-        IDbContextFactory<UniMapDbContext> dbFactory,
+        IAdminNewsService service,
         CancellationToken cancellationToken)
     {
-        await using var db = await dbFactory.CreateDbContextAsync(cancellationToken);
-        var entity = await db.News.AsNoTracking().FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
+        var entity = await service.GetByIdAsync(id, cancellationToken);
         return entity is null ? Results.NotFound() : Results.Ok(AdminEntityResponses.News(entity));
     }
 
     private static async Task<IResult> CreateAsync(
         NewsWriteDto dto,
-        IDbContextFactory<UniMapDbContext> dbFactory,
+        IAdminNewsService service,
         CancellationToken cancellationToken)
     {
-        if (string.IsNullOrWhiteSpace(dto.Title) || string.IsNullOrWhiteSpace(dto.Content))
-            return Results.BadRequest(new { error = "title and content are required." });
+        var result = await service.CreateAsync(
+            new NewsAdminCreateCommand(dto.Id, dto.Title, dto.Content, dto.IsActive),
+            cancellationToken);
 
-        var entity = new News
-        {
-            Id = dto.Id ?? Guid.Empty,
-            Title = dto.Title.Trim(),
-            Content = dto.Content,
-            IsActive = dto.IsActive ?? true,
-        };
-
-        await using var db = await dbFactory.CreateDbContextAsync(cancellationToken);
-        db.News.Add(entity);
-        await db.SaveChangesAsync(cancellationToken);
-        return Results.Created($"/api/admin/news/{entity.Id}", AdminEntityResponses.News(entity));
+        return result.ToHttpResult(entity =>
+            Results.Created($"/api/admin/news/{entity.Id}", AdminEntityResponses.News(entity)));
     }
 
     private static async Task<IResult> UpdateAsync(
         Guid id,
         NewsWriteDto dto,
-        IDbContextFactory<UniMapDbContext> dbFactory,
+        IAdminNewsService service,
         CancellationToken cancellationToken)
     {
-        await using var db = await dbFactory.CreateDbContextAsync(cancellationToken);
-        var entity = await db.News.FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
-        if (entity is null)
-            return Results.NotFound();
+        var result = await service.UpdateAsync(
+            id,
+            new NewsAdminUpdateCommand(dto.Title, dto.Content, dto.IsActive),
+            cancellationToken);
 
-        if (!string.IsNullOrWhiteSpace(dto.Title))
-            entity.Title = dto.Title.Trim();
-        if (!string.IsNullOrWhiteSpace(dto.Content))
-            entity.Content = dto.Content;
-        if (dto.IsActive.HasValue)
-            entity.IsActive = dto.IsActive.Value;
-
-        await db.SaveChangesAsync(cancellationToken);
-        return Results.Ok(AdminEntityResponses.News(entity));
+        return result.ToHttpResult(entity => Results.Ok(AdminEntityResponses.News(entity)));
     }
 
     private static async Task<IResult> DeleteAsync(
         Guid id,
-        IDbContextFactory<UniMapDbContext> dbFactory,
+        IAdminNewsService service,
         CancellationToken cancellationToken)
     {
-        await using var db = await dbFactory.CreateDbContextAsync(cancellationToken);
-        var entity = await db.News.FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
-        if (entity is null)
-            return Results.NotFound();
-
-        db.News.Remove(entity);
-        await db.SaveChangesAsync(cancellationToken);
-        return Results.NoContent();
+        var result = await service.DeleteAsync(id, cancellationToken);
+        return result.ToHttpResult(() => Results.NoContent());
     }
 
     private sealed record NewsWriteDto(

@@ -12,5 +12,5 @@ public sealed class JwtOptions
 
     public string CookieName { get; set; } = "unimap_admin_token";
 
-    public int ExpireMinutes { get; set; } = 60 * 24 * 7;
+    public int ExpireMinutes { get; set; } = 10080; //7 days
 }

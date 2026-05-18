@@ -1,6 +1,6 @@
 using System.Globalization;
 
-namespace infrastructure.GeoService;
+namespace infrastructure.Geo;
 
 public class NominatimGeoProvider : IGeoProvider
 {
