@@ -18,6 +18,10 @@
     </ItemGroup>
 
     <ItemGroup>
+      <Content Include="pictures\**\*" CopyToPublishDirectory="PreserveNewest" />
+    </ItemGroup>
+
+    <ItemGroup>
       <ProjectReference Include="..\app\app.csproj" />
       <ProjectReference Include="..\domain\domain.csproj" />
       <ProjectReference Include="..\infrastructure\infrastructure.csproj" />

@@ -10,15 +10,12 @@ public interface IAdminLocationPhotoRepository
 
     Task<bool> StorageKeyExistsAsync(string storageKey, CancellationToken cancellationToken = default);
 
-    Task<bool> LocationHasPhotosAsync(Guid locationId, CancellationToken cancellationToken = default);
-
-    Task AddAsync(LocationPhoto photo, bool clearOtherMainFlags, CancellationToken cancellationToken = default);
+    Task AddAsync(LocationPhoto photo, CancellationToken cancellationToken = default);
 
     Task<LocationPhoto?> UpdateAsync(
         Guid locationId,
         Guid photoId,
         Action<LocationPhoto> applyChanges,
-        bool clearOtherMainFlags,
         CancellationToken cancellationToken = default);
 
     Task<LocationPhoto?> DeleteAsync(

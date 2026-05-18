@@ -26,7 +26,10 @@ public sealed class LocationPublicRepository(IDbContextFactory<UniMapDbContext> 
                 x.Id,
                 x.Latitude,
                 x.Longitude,
-                LocationTypeMarkerResolver.Resolve(x.LocationType)))
+                LocationTypeMarkerResolver.CanonicalizeMarkerKey(
+                    x.LocationType.MarkerKey,
+                    x.LocationType.Code),
+                x.LocationType.Code))
             .ToList();
     }
 

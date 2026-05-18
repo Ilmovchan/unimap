@@ -1,3 +1,4 @@
+using app.Abstractions;
 using app.Abstractions.Administration;
 using app.Models;
 using app.Models.Admin;
@@ -6,7 +7,9 @@ using domain.Entities;
 
 namespace app.Services.Administration;
 
-public sealed class AdminNewsService(IAdminNewsRepository repository) : IAdminNewsService
+public sealed class AdminNewsService(
+    IAdminNewsRepository repository,
+    IUserApiCacheInvalidator cacheInvalidator) : IAdminNewsService
 {
     public Task<IReadOnlyList<News>> ListAsync(CancellationToken cancellationToken = default) =>
         repository.ListAsync(cancellationToken);
@@ -30,6 +33,7 @@ public sealed class AdminNewsService(IAdminNewsRepository repository) : IAdminNe
         };
 
         await repository.AddAsync(entity, cancellationToken);
+        await cacheInvalidator.InvalidateNewsAsync(cancellationToken);
         return ServiceResult<News>.Ok(entity);
     }
 
@@ -51,9 +55,11 @@ public sealed class AdminNewsService(IAdminNewsRepository repository) : IAdminNe
             },
             cancellationToken);
 
-        return updated is null
-            ? ServiceResults.NotFound<News>()
-            : ServiceResult<News>.Ok(updated);
+        if (updated is null)
+            return ServiceResults.NotFound<News>();
+
+        await cacheInvalidator.InvalidateNewsAsync(cancellationToken);
+        return ServiceResult<News>.Ok(updated);
     }
 
     public async Task<ServiceResult<bool>> DeleteAsync(
@@ -61,8 +67,10 @@ public sealed class AdminNewsService(IAdminNewsRepository repository) : IAdminNe
         CancellationToken cancellationToken = default)
     {
         var deleted = await repository.DeleteByIdAsync(id, cancellationToken);
-        return deleted
-            ? ServiceResult<bool>.Ok(true)
-            : ServiceResults.NotFound<bool>();
+        if (!deleted)
+            return ServiceResults.NotFound<bool>();
+
+        await cacheInvalidator.InvalidateNewsAsync(cancellationToken);
+        return ServiceResult<bool>.Ok(true);
     }
 }

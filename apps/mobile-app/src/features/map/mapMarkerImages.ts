@@ -55,6 +55,17 @@ const libraryIcon = require("@/assets/icons/markers/library.png");
 const stadiumIcon = require("@/assets/icons/markers/stadium.png");
 const buildingIcon = require("@/assets/icons/markers/uni.png");
 const dormitoryIcon = require("@/assets/icons/markers/dorm.png");
+const gardenIcon = require("@/assets/icons/markers/garden.png");
+const collegeIcon = require("@/assets/icons/markers/college.png");
+
+/** Ключі маркерів з окремим PNG (решта — building / default). */
+export const DISTINCT_MAP_MARKER_KEYS = [
+  "library",
+  "stadium",
+  "dormitory",
+  "garden",
+  "college",
+] as const;
 
 export function createUnselectedMarkerStyles(dimmed: boolean) {
   const opacity = dimmed ? DIMMED_MARKER_OPACITY : 1;
@@ -63,6 +74,8 @@ export function createUnselectedMarkerStyles(dimmed: boolean) {
     stadium: markerStyle(stadiumIcon, MARKER_ICON_SIZE, opacity),
     building: markerStyle(buildingIcon, MARKER_ICON_SIZE, opacity),
     dormitory: markerStyle(dormitoryIcon, MARKER_ICON_SIZE, opacity),
+    garden: markerStyle(gardenIcon, MARKER_ICON_SIZE, opacity),
+    college: markerStyle(collegeIcon, MARKER_ICON_SIZE, opacity),
   };
 }
 
@@ -73,5 +86,7 @@ export function createSelectedMarkerStyles(scale: number) {
     stadium: markerStyle(stadiumIcon, iconSize),
     building: markerStyle(buildingIcon, iconSize),
     dormitory: markerStyle(dormitoryIcon, iconSize),
+    garden: markerStyle(gardenIcon, iconSize),
+    college: markerStyle(collegeIcon, iconSize),
   };
 }

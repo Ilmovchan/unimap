@@ -148,3 +148,9 @@
 /Users/user/unimap/apps/server/api/bin/Debug/net9.0/Microsoft.IdentityModel.Protocols.OpenIdConnect.dll
 /Users/user/unimap/apps/server/api/bin/Debug/net9.0/Microsoft.IdentityModel.Tokens.dll
 /Users/user/unimap/apps/server/api/bin/Debug/net9.0/System.IdentityModel.Tokens.Jwt.dll
+/Users/user/unimap/apps/server/api/bin/Debug/net9.0/Microsoft.Extensions.Configuration.dll
+/Users/user/unimap/apps/server/api/bin/Debug/net9.0/Microsoft.Extensions.Diagnostics.dll
+/Users/user/unimap/apps/server/api/bin/Debug/net9.0/Microsoft.Extensions.Http.dll
+/Users/user/unimap/apps/server/api/bin/Debug/net9.0/Microsoft.Extensions.Caching.StackExchangeRedis.dll
+/Users/user/unimap/apps/server/api/bin/Debug/net9.0/Pipelines.Sockets.Unofficial.dll
+/Users/user/unimap/apps/server/api/bin/Debug/net9.0/StackExchange.Redis.dll

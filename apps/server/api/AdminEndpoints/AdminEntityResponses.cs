@@ -62,7 +62,6 @@ internal static class AdminEntityResponses
             url = pictureProvider.ResolvePublicUrl(photo, requestBaseUrl),
             storageKey = photo.StorageKey,
             altUk = photo.AltUk,
-            isMain = photo.IsMain,
             createdAt = photo.CreatedAt,
             updatedAt = photo.UpdatedAt,
         };

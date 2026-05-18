@@ -34,10 +34,6 @@ public sealed class LocationPhotoConfiguration : IEntityTypeConfiguration<Locati
             .HasColumnName("alt_uk")
             .HasMaxLength(500);
 
-        builder.Property(x => x.IsMain)
-            .HasColumnName("is_main")
-            .IsRequired();
-
         builder.Property(x => x.CreatedAt)
             .HasColumnName("created_at")
             .IsRequired();
@@ -55,9 +51,5 @@ public sealed class LocationPhotoConfiguration : IEntityTypeConfiguration<Locati
 
         builder.HasIndex(x => x.StorageKey)
             .IsUnique();
-
-        builder.HasIndex(x => new { x.LocationId, x.IsMain })
-            .IsUnique()
-            .HasFilter("is_main = true");
     }
 }

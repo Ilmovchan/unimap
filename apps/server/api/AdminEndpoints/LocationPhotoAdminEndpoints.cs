@@ -32,27 +32,33 @@ public static class LocationPhotoAdminEndpoints
     private static async Task<IResult> UploadAsync(
         Guid locationId,
         HttpRequest httpRequest,
-        IFormFile? file,
-        string? altUk,
-        bool? isMain,
         IAdminLocationPhotoService service,
         IPictureProvider pictureProvider,
         CancellationToken cancellationToken)
     {
-        if (file is null)
+        if (!httpRequest.HasFormContentType)
+            return Results.BadRequest(new { error = "multipart form data is required." });
+
+        var form = await httpRequest.ReadFormAsync(cancellationToken);
+        var file = form.Files.GetFile("file") ?? form.Files.FirstOrDefault();
+        if (file is null || file.Length == 0)
             return Results.BadRequest(new { error = "file is required." });
 
-        await using var stream = file.OpenReadStream();
+        var altUk = form["altUk"].ToString();
+
+        await using var stream = new MemoryStream();
+        await file.CopyToAsync(stream, cancellationToken);
+        stream.Position = 0;
+
         var command = new LocationPhotoAdminUploadCommand(
             stream,
             file.FileName,
-            file.ContentType ?? "application/octet-stream",
+            string.IsNullOrWhiteSpace(file.ContentType) ? "application/octet-stream" : file.ContentType,
             file.Length,
-            altUk,
-            isMain);
+            string.IsNullOrWhiteSpace(altUk) ? null : altUk);
 
-        var result = await service.UploadAsync(locationId, command, cancellationToken);
         var baseUrl = RequestBaseUrl.From(httpRequest);
+        var result = await service.UploadAsync(locationId, command, baseUrl, cancellationToken);
         return result.ToHttpResult(photo =>
             Results.Created(
                 $"/api/admin/locations/{locationId}/photos/{photo.Id}",
@@ -72,7 +78,7 @@ public static class LocationPhotoAdminEndpoints
         var result = await service.UpdateAsync(
             locationId,
             photoId,
-            new LocationPhotoAdminUpdateCommand(dto.AltUk, dto.IsMain),
+            new LocationPhotoAdminUpdateCommand(dto.AltUk),
             cancellationToken);
 
         return result.ToHttpResult(photo =>
@@ -89,5 +95,5 @@ public static class LocationPhotoAdminEndpoints
         return result.ToHttpResult(() => Results.NoContent());
     }
 
-    private sealed record LocationPhotoUpdateDto(string? AltUk, bool? IsMain);
+    private sealed record LocationPhotoUpdateDto(string? AltUk);
 }

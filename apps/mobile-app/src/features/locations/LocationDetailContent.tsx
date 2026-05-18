@@ -11,16 +11,9 @@ import {
 } from "@/src/features/api/locationsClient";
 import { globalColors } from "@/src/styles/styles";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
-import { Image } from "expo-image";
 import { useCallback, useState } from "react";
-import {
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  View,
-  useWindowDimensions,
-} from "react-native";
+import { Pressable, StyleSheet, Text, View } from "react-native";
+import LocationPhotoStrip from "./LocationPhotoStrip";
 import { locationCardStyles as styles } from "./locationCardStyles";
 import UniversityObjectDetailModal from "./UniversityObjectDetailModal";
 import {
@@ -39,12 +32,12 @@ function formatObjectsList(loc: LocationDetailDto): LocationUniversityObjectDto[
   return sortUniversityObjectsForDisplay(loc.objects);
 }
 
-function locationPhotosForDisplay(loc: LocationDetailDto): LocationPhotoDto[] {
+export function locationPhotosForDisplay(loc: LocationDetailDto): LocationPhotoDto[] {
   const fromApi = loc.photos?.filter((p) => p.url?.trim()) ?? [];
   if (fromApi.length) return fromApi;
   const single = loc.imageUrl?.trim();
   if (!single) return [];
-  return [{ id: "main", url: single, isMain: true }];
+  return [{ id: "main", url: single }];
 }
 
 export function locationCardTitle(location: LocationDetailDto): string {
@@ -74,8 +67,6 @@ export function LocationDetailSections({
   const addressText = locationAddressText(location);
   const headline = locationCardTitle(location);
   const photos = locationPhotosForDisplay(location);
-  const { width: windowWidth } = useWindowDimensions();
-  const gallerySlideWidth = Math.max(240, Math.min(windowWidth - 72, 360));
   const objects = formatObjectsList(location);
   const highlightId = location.highlightedObjectId?.trim();
   const showObjectsSection = objects.length > 0;
@@ -140,45 +131,11 @@ export function LocationDetailSections({
         <Text style={styles.headline}>{headline}</Text>
       ) : null}
 
-      {objectsCard}
-
       {photos.length > 0 ? (
-        <View style={styles.card}>
-          <Text style={styles.sectionLabel}>
-            {photos.length > 1 ? `Фото (${photos.length})` : "Фото"}
-          </Text>
-          {photos.length === 1 ? (
-            <Image
-              source={{ uri: photos[0].url }}
-              style={styles.heroImage}
-              contentFit="cover"
-              accessibilityLabel={photos[0].altUk?.trim() || headline}
-            />
-          ) : (
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              decelerationRate="fast"
-              snapToInterval={gallerySlideWidth + 12}
-              contentContainerStyle={detailStyles.galleryContent}
-            >
-              {photos.map((photo) => (
-                <Image
-                  key={photo.id}
-                  source={{ uri: photo.url }}
-                  style={[
-                    styles.heroImage,
-                    detailStyles.gallerySlide,
-                    { width: gallerySlideWidth },
-                  ]}
-                  contentFit="cover"
-                  accessibilityLabel={photo.altUk?.trim() || headline}
-                />
-              ))}
-            </ScrollView>
-          )}
-        </View>
+        <LocationPhotoStrip photos={photos} title={headline} />
       ) : null}
+
+      {objectsCard}
 
       {addressText ? (
         <View style={styles.card}>
@@ -204,13 +161,6 @@ export function LocationDetailSections({
 }
 
 const detailStyles = StyleSheet.create({
-  galleryContent: {
-    gap: 12,
-    paddingRight: 4,
-  },
-  gallerySlide: {
-    marginRight: 0,
-  },
   objRow: {
     flexDirection: "row",
     alignItems: "center",

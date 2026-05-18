@@ -13,7 +13,10 @@ public static class LocationResponseMaps
             markerDto.Id,
             latitude = markerDto.Latitude,
             longitude = markerDto.Longitude,
-            markerKey = markerDto.MarkerKey,
+            markerKey = LocationTypeMarkerResolver.CanonicalizeMarkerKey(
+                markerDto.MarkerKey,
+                markerDto.LocationTypeCode),
+            type = markerDto.LocationTypeCode,
         };
 
     private static string ResolveMarkerKey(LocationType lt) =>

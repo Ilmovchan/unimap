@@ -151,6 +151,8 @@ export async function fetchNews(): Promise<NewsItemDto[]> {
     );
 
   await writeCachedNews(items);
+  const readIds = await getReadNewsIds();
+  scheduleNewsAppBadgeSync(countUnreadNews(items, readIds));
   return items;
 }
 
@@ -179,18 +181,27 @@ export async function getReadNewsIds(): Promise<Set<string>> {
   }
 }
 
+function scheduleNewsAppBadgeSync(unreadCount?: number): void {
+  void import("@/src/features/news/newsAppBadge")
+    .then(({ syncNewsAppBadge }) => syncNewsAppBadge(unreadCount))
+    .catch((e) => log.warn("[UniMap] app badge schedule failed", e));
+}
+
 export async function markNewsRead(id: string): Promise<Set<string>> {
   const trimmed = id.trim();
   if (!trimmed) return getReadNewsIds();
   const ids = await getReadNewsIds();
   ids.add(trimmed);
   await AsyncStorage.setItem(READ_IDS_STORAGE_KEY, JSON.stringify([...ids]));
+  const items = await readCachedNews();
+  scheduleNewsAppBadgeSync(countUnreadNews(items, ids));
   return ids;
 }
 
 export async function markAllNewsRead(items: NewsItemDto[]): Promise<Set<string>> {
   const ids = new Set(items.map((n) => n.id));
   await AsyncStorage.setItem(READ_IDS_STORAGE_KEY, JSON.stringify([...ids]));
+  scheduleNewsAppBadgeSync(0);
   return ids;
 }
 

@@ -12,6 +12,8 @@ const TITLE_UK_BY_TYPE_CODE: Record<string, string> = {
   dormitory: "Гуртожитки",
   library: "Бібліотеки",
   building: "Навчальні корпуси",
+  college: "Фахові коледжі",
+  garden: "Сади та парки",
   other: "Інше",
 };
 
@@ -20,6 +22,8 @@ const ICON_BY_TYPE_CODE: Record<string, LocationSectionIconName> = {
   dormitory: "home-outline",
   library: "library-outline",
   building: "business-outline",
+  college: "school-outline",
+  garden: "leaf-outline",
   other: "ellipsis-horizontal-circle-outline",
 };
 
@@ -60,6 +64,10 @@ export function iconForLocationSection(
       return "library-outline";
     case "stadium":
       return "football-outline";
+    case "garden":
+      return "leaf-outline";
+    case "college":
+      return "school-outline";
     case "admin":
       return "briefcase-outline";
     case "info":

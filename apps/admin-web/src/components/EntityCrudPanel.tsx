@@ -298,6 +298,17 @@ function computeColumnLayout(
     : computeExpandLayout(tableWidth, middleFields, rows)
 }
 
+function columnLayoutsEqual(a: ColumnLayout, b: ColumnLayout): boolean {
+  if (a.hasGutter !== b.hasGutter || a.tableMinWidth !== b.tableMinWidth) return false
+  const aKeys = Object.keys(a.widths)
+  const bKeys = Object.keys(b.widths)
+  if (aKeys.length !== bKeys.length) return false
+  for (const key of aKeys) {
+    if (a.widths[key] !== b.widths[key]) return false
+  }
+  return true
+}
+
 function useTableColumnLayout(
   tableWrapRef: RefObject<HTMLDivElement | null>,
   middleFields: TableField[],
@@ -311,8 +322,9 @@ function useTableColumnLayout(
   const recompute = useCallback(() => {
     const wrap = tableWrapRef.current
     if (!wrap) return
-    setLayout(computeColumnLayout(wrap.clientWidth, middleFields, rows, layoutMode))
-  }, [tableWrapRef, middleFields, rows, layoutMode])
+    const next = computeColumnLayout(wrap.clientWidth, middleFields, rows, layoutMode)
+    setLayout((prev) => (columnLayoutsEqual(prev, next) ? prev : next))
+  }, [middleFields, rows, layoutMode])
 
   useEffect(() => {
     recompute()
@@ -321,7 +333,7 @@ function useTableColumnLayout(
     const observer = new ResizeObserver(() => recompute())
     observer.observe(wrap)
     return () => observer.disconnect()
-  }, [recompute, tableWrapRef])
+  }, [recompute])
 
   return layout
 }
@@ -442,7 +454,7 @@ export default function EntityCrudPanel({ table }: Props) {
   const [bulkDeleting, setBulkDeleting] = useState(false)
   const [sort, setSort] = useState<SortState | null>(null)
 
-  const listFields = table.fields.filter((f) => f.list)
+  const listFields = useMemo(() => table.fields.filter((f) => f.list), [table.fields])
   const { middle: middleListFields, tail: tailListFields } = useMemo(
     () => splitListFields(listFields),
     [listFields],

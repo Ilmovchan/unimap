@@ -6,6 +6,8 @@ public interface IPictureProvider
 {
     string? ResolvePublicUrl(LocationPhoto photo, string? requestBaseUrl);
 
+    string? ResolvePublicUrlForStorageKey(string storageKey, string? requestBaseUrl);
+
     Task<PictureContent?> OpenReadAsync(
         string storageKey,
         CancellationToken cancellationToken = default);

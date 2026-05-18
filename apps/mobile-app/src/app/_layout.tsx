@@ -4,6 +4,7 @@ import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { globalColors } from "../styles/styles";
 import { LocationProvider } from "../features/core/location/stores/LocationProvider";
+import { subscribeNewsAppBadgeRefresh } from "@/src/features/news/newsAppBadge";
 import { useEffect } from "react";
 import "@/src/config/logger";
 import * as SplashScreen from "expo-splash-screen";
@@ -20,6 +21,8 @@ const RootStack = () => {
   useEffect(() => {
     SplashScreen.hide();
   }, []);
+
+  useEffect(() => subscribeNewsAppBadgeRefresh(), []);
 
   return (
     <Stack

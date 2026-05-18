@@ -15,12 +15,14 @@ import {
 } from "@maplibre/maplibre-react-native";
 import * as Location from "expo-location";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { InteractionManager, View } from "react-native";
+import { View } from "react-native";
+import { mapStyleUrl } from "@/src/features/api/mapClient";
 import { resolveMarkerKeyForMap } from "@/src/features/api/locationsClient";
 import type { RouteLineFeature } from "./mapRouteStore";
 import {
   createSelectedMarkerStyles,
   createUnselectedMarkerStyles,
+  DISTINCT_MAP_MARKER_KEYS,
   MARKER_SELECTION_ANIM_MS,
   SELECTED_MARKER_TARGET_SCALE,
 } from "./mapMarkerImages";
@@ -28,6 +30,11 @@ import {
   focusCameraLikeNavigateButton,
   focusCameraToFitBounds,
 } from "./navigateCamera";
+import {
+  MAP_MAX_ZOOM_LEVEL,
+  MAP_MIN_ZOOM_LEVEL,
+  ODESA_MAX_BOUNDS,
+} from "./odesaMapBounds";
 
 export type MapMarkerPoint = {
   id: string;
@@ -35,28 +42,23 @@ export type MapMarkerPoint = {
   lng: number;
   /** Ключ маркера з API (building, library, stadium, …). */
   markerKey?: string;
+  /** Код типу локації для резолву маркера. */
+  typeCode?: string | null;
 };
 
 const CLUSTER_SOURCE_ID = "locationMarkers";
 const ROUTE_SOURCE_ID = "navigationRoute";
 const CLUSTER_LEAVES_PAGE_SIZE = 2000;
 
-const ODESA_MAX_BOUNDS = {
-  ne: [30.98, 46.66] as [number, number],
-  sw: [30.4, 46.34] as [number, number],
-};
-
-const MAP_MIN_ZOOM_LEVEL = 10;
-const MAP_MAX_ZOOM_LEVEL = 20;
-
 const CLUSTER_FIT_PADDING = {
-  paddingTop: 120,
-  paddingBottom: 180,
-  paddingLeft: 40,
-  paddingRight: 40,
+  paddingTop: 128,
+  paddingBottom: 192,
+  paddingLeft: 44,
+  paddingRight: 44,
 } as const;
 
-const CLUSTER_BOUNDS_MARGIN_RATIO = 0.22;
+/** Більший margin — кластер трохи далі (менший зум). */
+const CLUSTER_BOUNDS_MARGIN_RATIO = 0.28;
 const CLUSTER_MIN_SPAN_DEG = 0.0009;
 
 function easeOutCubic(t: number): number {
@@ -174,7 +176,11 @@ const Map = ({
   routeFeature = null,
   selectedLocationId = null,
 }: Props) => {
-  const apiUrl = process.env.EXPO_PUBLIC_MAP_RENDER_API_LINK;
+  const apiUrl = mapStyleUrl();
+  /** MapLibre застосовує maxBounds лише коли followUserLocation === false. */
+  const [cameraFollowEnabled, setCameraFollowEnabled] = useState(false);
+  const followUserRef = useRef(followUserLocation);
+  followUserRef.current = followUserLocation;
   const shapeSourceRef = useRef<ShapeSourceRef>(null);
   const selectedScaleRef = useRef(1);
   const [selectedScale, setSelectedScale] = useState(1);
@@ -183,6 +189,27 @@ const Map = ({
   const [highlightedLocationId, setHighlightedLocationId] = useState<
     string | null
   >(null);
+
+  const applyNativeMapBounds = useCallback(() => {
+    setCameraFollowEnabled(false);
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        setCameraFollowEnabled(followUserRef.current);
+      });
+    });
+  }, []);
+
+  useEffect(() => {
+    applyNativeMapBounds();
+  }, [applyNativeMapBounds]);
+
+  useEffect(() => {
+    setCameraFollowEnabled(followUserLocation);
+  }, [followUserLocation]);
+
+  const handleMapStyleLoaded = useCallback(() => {
+    applyNativeMapBounds();
+  }, [applyNativeMapBounds]);
 
   useEffect(() => {
     let cancelled = false;
@@ -255,12 +282,35 @@ const Map = ({
         },
         properties: {
           id: m.id,
-          markerKey: resolveMarkerKeyForMap(m.markerKey),
+          markerKey: resolveMarkerKeyForMap(m.markerKey, m.typeCode),
           selected: m.id === highlightedLocationId ? 1 : 0,
         },
       })),
     }),
     [markers, highlightedLocationId],
+  );
+
+  /** MapLibre ігнорує setCamera, поки followUserLocation увімкнено — вимикаємо локально до рендеру. */
+  const releaseFollowAndRun = useCallback(
+    (run: () => void) => {
+      setCameraFollowEnabled(false);
+      onStopFollowingUser?.();
+      requestAnimationFrame(() => {
+        requestAnimationFrame(run);
+      });
+    },
+    [onStopFollowingUser],
+  );
+
+  const runCameraCommand = useCallback(
+    (attempt: number, command: () => void) => {
+      if (!cameraRef.current && attempt < 12) {
+        setTimeout(() => runCameraCommand(attempt + 1, command), 48);
+        return;
+      }
+      command();
+    },
+    [cameraRef],
   );
 
   const handleShapePress = useCallback(
@@ -272,37 +322,45 @@ const Map = ({
       if (!lngLat) return;
 
       const cluster = isClusterFeature(feature);
+      const raw = (feature.properties as { id?: unknown } | undefined)?.id;
+      const id = raw === undefined || raw === null ? "" : String(raw);
 
-      onStopFollowingUser?.();
+      if (cluster) {
+        releaseFollowAndRun(() => {
+          runCameraCommand(0, () => {
+            void (async () => {
+              const src = shapeSourceRef.current;
+              if (!src) return;
 
-      InteractionManager.runAfterInteractions(() => {
-        if (cluster) {
-          void (async () => {
-            const src = shapeSourceRef.current;
-            if (!src) return;
+              const coords = await collectClusterLeafCoords(src, feature);
+              const box = boundsNeSwFromLngLats(coords);
+              if (!box) return;
 
-            const coords = await collectClusterLeafCoords(src, feature);
-            const box = boundsNeSwFromLngLats(coords);
-            if (!box) return;
+              focusCameraToFitBounds(
+                cameraRef,
+                box.ne,
+                box.sw,
+                CLUSTER_FIT_PADDING,
+              );
+            })();
+          });
+        });
+        return;
+      }
 
-            focusCameraToFitBounds(
-              cameraRef,
-              box.ne,
-              box.sw,
-              CLUSTER_FIT_PADDING,
-            );
-          })();
-          return;
-        }
-
-        focusCameraLikeNavigateButton(cameraRef, lngLat, "tapSingleMarker");
-
-        const raw = (feature.properties as { id?: unknown } | undefined)?.id;
-        const id = raw === undefined || raw === null ? "" : String(raw);
-        if (id) onMarkerPress?.(id);
+      releaseFollowAndRun(() => {
+        runCameraCommand(0, () => {
+          focusCameraLikeNavigateButton(cameraRef, lngLat, "tapSingleMarker");
+          if (id) onMarkerPress?.(id);
+        });
       });
     },
-    [cameraRef, onMarkerPress, onStopFollowingUser],
+    [
+      cameraRef,
+      onMarkerPress,
+      releaseFollowAndRun,
+      runCameraCommand,
+    ],
   );
 
   /** М’яка тінь під кластером — як у FAB. */
@@ -397,6 +455,7 @@ const Map = ({
         attributionPosition={{ bottom: 40, left: 25 }}
         compassViewPosition={2}
         compassViewMargins={{ x: 18, y: 80 }}
+        onDidFinishLoadingStyle={handleMapStyleLoaded}
       >
         <UserLocation
           visible={true}
@@ -419,7 +478,7 @@ const Map = ({
             maxBounds={ODESA_MAX_BOUNDS}
             minZoomLevel={MAP_MIN_ZOOM_LEVEL}
             maxZoomLevel={MAP_MAX_ZOOM_LEVEL}
-            followUserLocation={followUserLocation}
+            followUserLocation={cameraFollowEnabled}
             ref={cameraRef}
           />
         )}
@@ -462,11 +521,21 @@ const Map = ({
                   [
                     "in",
                     ["get", "markerKey"],
-                    ["literal", ["library", "stadium", "dormitory"]],
+                    ["literal", [...DISTINCT_MAP_MARKER_KEYS]],
                   ],
                 ],
               ]}
               style={unselectedMarkerStyles.building}
+            />
+            <SymbolLayer
+              id={`${CLUSTER_SOURCE_ID}-point-garden`}
+              filter={[
+                "all",
+                ["!", ["has", "point_count"]],
+                ["==", ["get", "selected"], 0],
+                ["==", ["get", "markerKey"], "garden"],
+              ]}
+              style={unselectedMarkerStyles.garden}
             />
             <SymbolLayer
               id={`${CLUSTER_SOURCE_ID}-point-library`}
@@ -499,6 +568,16 @@ const Map = ({
               style={unselectedMarkerStyles.dormitory}
             />
             <SymbolLayer
+              id={`${CLUSTER_SOURCE_ID}-point-college`}
+              filter={[
+                "all",
+                ["!", ["has", "point_count"]],
+                ["==", ["get", "selected"], 0],
+                ["==", ["get", "markerKey"], "college"],
+              ]}
+              style={unselectedMarkerStyles.college}
+            />
+            <SymbolLayer
               id={`${CLUSTER_SOURCE_ID}-point-building-selected`}
               filter={[
                 "all",
@@ -509,11 +588,21 @@ const Map = ({
                   [
                     "in",
                     ["get", "markerKey"],
-                    ["literal", ["library", "stadium", "dormitory"]],
+                    ["literal", [...DISTINCT_MAP_MARKER_KEYS]],
                   ],
                 ],
               ]}
               style={selectedMarkerStyles.building}
+            />
+            <SymbolLayer
+              id={`${CLUSTER_SOURCE_ID}-point-garden-selected`}
+              filter={[
+                "all",
+                ["!", ["has", "point_count"]],
+                ["==", ["get", "selected"], 1],
+                ["==", ["get", "markerKey"], "garden"],
+              ]}
+              style={selectedMarkerStyles.garden}
             />
             <SymbolLayer
               id={`${CLUSTER_SOURCE_ID}-point-library-selected`}
@@ -544,6 +633,16 @@ const Map = ({
                 ["==", ["get", "markerKey"], "dormitory"],
               ]}
               style={selectedMarkerStyles.dormitory}
+            />
+            <SymbolLayer
+              id={`${CLUSTER_SOURCE_ID}-point-college-selected`}
+              filter={[
+                "all",
+                ["!", ["has", "point_count"]],
+                ["==", ["get", "selected"], 1],
+                ["==", ["get", "markerKey"], "college"],
+              ]}
+              style={selectedMarkerStyles.college}
             />
           </ShapeSource>
         ) : null}

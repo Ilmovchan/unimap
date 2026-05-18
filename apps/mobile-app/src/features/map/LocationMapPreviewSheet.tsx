@@ -443,10 +443,7 @@ export default function LocationMapPreviewSheet({
               ) : detailError ? (
                 <Text style={styles.sheetError}>{detailError}</Text>
               ) : detail ? (
-                <LocationDetailSections
-                  location={detail}
-                  showHeadline={false}
-                />
+                <LocationDetailSections location={detail} showHeadline={false} />
               ) : null}
             </View>
           </View>
@@ -547,8 +544,8 @@ const styles = StyleSheet.create({
     paddingBottom: 4,
   },
   sheetBody: {
-    marginTop: 12,
-    paddingTop: 4,
+    marginTop: 8,
+    paddingTop: 0,
   },
   toolbar: {
     flexDirection: "row",

@@ -1,3 +1,4 @@
+using app.Abstractions;
 using app.Abstractions.Administration;
 using app.Models;
 using app.Models.Admin;
@@ -6,7 +7,9 @@ using domain.Entities;
 
 namespace app.Services.Administration;
 
-public sealed class AdminLocationTypeService(IAdminLocationTypeRepository repository) : IAdminLocationTypeService
+public sealed class AdminLocationTypeService(
+    IAdminLocationTypeRepository repository,
+    IUserApiCacheInvalidator cacheInvalidator) : IAdminLocationTypeService
 {
     public Task<IReadOnlyList<LocationType>> ListAsync(CancellationToken cancellationToken = default) =>
         repository.ListAsync(cancellationToken);
@@ -30,6 +33,7 @@ public sealed class AdminLocationTypeService(IAdminLocationTypeRepository reposi
         };
 
         await repository.AddAsync(entity, cancellationToken);
+        await cacheInvalidator.InvalidateLocationsAsync(cancellationToken);
         return ServiceResult<LocationType>.Ok(entity);
     }
 
@@ -51,9 +55,11 @@ public sealed class AdminLocationTypeService(IAdminLocationTypeRepository reposi
             },
             cancellationToken);
 
-        return updated is null
-            ? ServiceResults.NotFound<LocationType>()
-            : ServiceResult<LocationType>.Ok(updated);
+        if (updated is null)
+            return ServiceResults.NotFound<LocationType>();
+
+        await cacheInvalidator.InvalidateLocationsAsync(cancellationToken);
+        return ServiceResult<LocationType>.Ok(updated);
     }
 
     public async Task<ServiceResult<bool>> DeleteAsync(
@@ -69,6 +75,7 @@ public sealed class AdminLocationTypeService(IAdminLocationTypeRepository reposi
             return ServiceResults.Conflict<bool>("Cannot delete: locations reference this type.");
         }
 
+        await cacheInvalidator.InvalidateLocationsAsync(cancellationToken);
         return ServiceResult<bool>.Ok(true);
     }
 }

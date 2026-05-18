@@ -14,8 +14,6 @@ public sealed class LocationPhoto : ITimestampedEntity
 
     public string? AltUk { get; set; }
 
-    public bool IsMain { get; set; }
-
     public DateTimeOffset CreatedAt { get; set; }
 
     public DateTimeOffset UpdatedAt { get; set; }

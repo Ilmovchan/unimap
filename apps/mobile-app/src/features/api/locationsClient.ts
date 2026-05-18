@@ -21,6 +21,8 @@ export type LocationMarkerDto = {
   lat: number;
   lng: number;
   markerKey: string;
+  /** Код типу локації (garden, building, …) — резерв для резолву маркера. */
+  typeCode?: string | null;
 };
 
 /** Фото локації з GET /api/locations/:id (поле photos). */
@@ -28,7 +30,6 @@ export type LocationPhotoDto = {
   id: string;
   url: string;
   altUk?: string | null;
-  isMain?: boolean;
 };
 
 /** Локація для списку / деталей. */
@@ -60,6 +61,8 @@ const CANONICAL_MARKER_KEYS = new Set([
   "dormitory",
   "library",
   "stadium",
+  "garden",
+  "college",
   "admin",
   "default",
   "info",
@@ -94,11 +97,12 @@ function normalizeApiMarkerKey(raw: string | null | undefined): string | null {
   if (raw === undefined || raw === null) return null;
   const t = raw.trim();
   if (!t) return null;
-  const lower = t.toLowerCase();
+  let lower = t.toLowerCase();
+  if (lower.endsWith("_marker")) lower = lower.slice(0, -"_marker".length);
   if (lower === "uni") return "building";
   if (CANONICAL_MARKER_KEYS.has(lower)) return lower;
 
-  const withoutMarkerSuffix = lower.replace(/_marker$/, "");
+  const withoutMarkerSuffix = lower;
   if (CANONICAL_MARKER_KEYS.has(withoutMarkerSuffix)) return withoutMarkerSuffix;
 
   if (withoutMarkerSuffix.includes("library")) return "library";
@@ -112,6 +116,9 @@ function normalizeApiMarkerKey(raw: string | null | undefined): string | null {
     withoutMarkerSuffix.includes("dorm")
   )
     return "dormitory";
+  if (withoutMarkerSuffix.includes("garden")) return "garden";
+  if (withoutMarkerSuffix.includes("college") || withoutMarkerSuffix.includes("коледж"))
+    return "college";
   if (
     withoutMarkerSuffix.includes("building") ||
     withoutMarkerSuffix.includes("uni")
@@ -143,12 +150,29 @@ function markerKeyFromLocationTypeCode(
       return "dormitory";
     case "building":
       return "building";
+    case "garden":
+      return "garden";
+    case "college":
+    case "vocational_college":
+    case "professional_college":
+    case "fakhovy_college":
+      return "college";
     case "other":
       return "default";
     default:
       if (c.includes("library")) return "library";
       if (c.includes("stadium") || c.includes("sport")) return "stadium";
       if (c.includes("dorm")) return "dormitory";
+      if (c.includes("garden")) return "garden";
+      if (
+        c.includes("college") ||
+        c.includes("коледж") ||
+        c.includes("fakhov") ||
+        c.includes("фахов") ||
+        c.includes("vocational") ||
+        c.includes("professional")
+      )
+        return "college";
       if (c.includes("building")) return "building";
       if (c === "other" || c.includes("misc")) return "default";
       return null;
@@ -166,6 +190,15 @@ export function markerKeyFromLocationTypeTitle(
   if (t.includes("адмін")) return "admin";
   if (t.includes("інш")) return "default";
   if (t.includes("гуртожит") || t.includes("dormitory")) return "dormitory";
+  if (t.includes("коледж") || t.includes("college") || t.includes("фахов"))
+    return "college";
+  if (
+    t.includes("garden") ||
+    t.includes("сад") ||
+    t.includes("парк") ||
+    t.includes("сквер")
+  )
+    return "garden";
   if (
     t.includes("будівл") ||
     t.includes("будивл") ||
@@ -261,13 +294,7 @@ function parseLocationPhotosFromApi(raw: unknown): LocationPhotoDto[] | undefine
     const alt = pickRaw(o, "altUk", "AltUk");
     const altUk =
       alt === undefined || alt === null ? null : String(alt).trim() || null;
-    const isMainRaw = pickRaw(o, "isMain", "IsMain");
-    const isMain =
-      isMainRaw === true ||
-      isMainRaw === "true" ||
-      isMainRaw === 1 ||
-      isMainRaw === "1";
-    out.push({ id, url, altUk, isMain });
+    out.push({ id, url, altUk });
   }
   return out.length ? out : undefined;
 }
@@ -279,8 +306,6 @@ function resolveMainImageUrl(
   const direct = imageUrl?.trim();
   if (direct) return direct;
   if (!photos?.length) return null;
-  const main = photos.find((p) => p.isMain && p.url?.trim());
-  if (main?.url?.trim()) return main.url.trim();
   const first = photos.find((p) => p.url?.trim());
   return first?.url?.trim() ?? null;
 }
@@ -438,15 +463,16 @@ function normalizeLocationMarker(raw: Record<string, unknown>): LocationMarkerDt
     "longitude",
     "Longitude",
   );
-  const typeRaw = pickRaw(raw, "type", "Type");
+  const typeRaw = pickRaw(raw, "type", "Type", "locationTypeCode", "LocationTypeCode");
+  const typeCode =
+    typeRaw === undefined || typeRaw === null
+      ? null
+      : String(typeRaw).trim() || null;
   const mk = pickRaw(raw, "markerKey", "MarkerKey");
   const markerKeyRaw =
     mk === undefined || mk === null ? null : String(mk).trim() || null;
-  const markerKey = resolveMarkerKeyForMap(
-    markerKeyRaw,
-    typeRaw === undefined || typeRaw === null ? null : String(typeRaw),
-  );
-  return { id, lat, lng, markerKey };
+  const markerKey = resolveMarkerKeyForMap(markerKeyRaw, typeCode);
+  return { id, lat, lng, markerKey, typeCode };
 }
 
 /** Легкий список маркерів для ініціалізації карти. */

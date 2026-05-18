@@ -12,6 +12,7 @@ import LocationMapPreviewSheet from "@/src/features/map/LocationMapPreviewSheet"
 import LayoutButton from "@/src/features/map/components/LayoutButton";
 import MapSearchChrome from "@/src/features/map/components/MapSearchChrome";
 import { MAP_SEARCH_UI_ENABLED } from "@/src/features/map/mapSearchConfig";
+import { syncNewsAppBadge } from "@/src/features/news/newsAppBadge";
 import { getUnreadNewsCount } from "@/src/features/news/newsClient";
 import { globalColors } from "@/src/styles/styles";
 import { Ionicons } from "@expo/vector-icons";
@@ -78,6 +79,7 @@ export default function MapScreen() {
             lat: d.lat,
             lng: d.lng,
             markerKey: d.markerKey,
+            typeCode: d.typeCode,
           }));
 
         setMarkers(next);
@@ -95,6 +97,7 @@ export default function MapScreen() {
       try {
         const count = await getUnreadNewsCount();
         setUnreadNewsCount(count);
+        await syncNewsAppBadge(count);
       } catch (e) {
         log.warn("[UniMap] unread news count failed", e);
       }

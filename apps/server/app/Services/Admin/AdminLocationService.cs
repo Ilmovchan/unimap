@@ -1,3 +1,4 @@
+using app.Abstractions;
 using app.Abstractions.Administration;
 using app.Models;
 using app.Models.Admin;
@@ -6,7 +7,9 @@ using domain.Entities;
 
 namespace app.Services.Administration;
 
-public sealed class AdminLocationService(IAdminLocationRepository repository) : IAdminLocationService
+public sealed class AdminLocationService(
+    IAdminLocationRepository repository,
+    IUserApiCacheInvalidator cacheInvalidator) : IAdminLocationService
 {
     public Task<IReadOnlyList<Location>> ListAsync(CancellationToken cancellationToken = default) =>
         repository.ListAsync(cancellationToken);
@@ -37,9 +40,11 @@ public sealed class AdminLocationService(IAdminLocationRepository repository) : 
 
         await repository.AddAsync(entity, cancellationToken);
         var created = await repository.GetByIdAsync(entity.Id, cancellationToken);
-        return created is null
-            ? ServiceResults.NotFound<Location>()
-            : ServiceResult<Location>.Ok(created);
+        if (created is null)
+            return ServiceResults.NotFound<Location>();
+
+        await cacheInvalidator.InvalidateLocationsAsync(cancellationToken);
+        return ServiceResult<Location>.Ok(created);
     }
 
     public async Task<ServiceResult<Location>> UpdateAsync(
@@ -76,9 +81,11 @@ public sealed class AdminLocationService(IAdminLocationRepository repository) : 
             return ServiceResults.NotFound<Location>();
 
         var withDetails = await repository.GetByIdAsync(id, cancellationToken);
-        return withDetails is null
-            ? ServiceResults.NotFound<Location>()
-            : ServiceResult<Location>.Ok(withDetails);
+        if (withDetails is null)
+            return ServiceResults.NotFound<Location>();
+
+        await cacheInvalidator.InvalidateLocationsAsync(cancellationToken);
+        return ServiceResult<Location>.Ok(withDetails);
     }
 
     public async Task<ServiceResult<bool>> DeleteAsync(
@@ -86,8 +93,10 @@ public sealed class AdminLocationService(IAdminLocationRepository repository) : 
         CancellationToken cancellationToken = default)
     {
         var deleted = await repository.DeleteByIdAsync(id, cancellationToken);
-        return deleted
-            ? ServiceResult<bool>.Ok(true)
-            : ServiceResults.NotFound<bool>();
+        if (!deleted)
+            return ServiceResults.NotFound<bool>();
+
+        await cacheInvalidator.InvalidateLocationsAsync(cancellationToken);
+        return ServiceResult<bool>.Ok(true);
     }
 }

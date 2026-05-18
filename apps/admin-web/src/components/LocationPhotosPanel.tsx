@@ -3,7 +3,6 @@ import {
   deleteLocationPhoto,
   listLocationPhotos,
   LocationPhotosApiError,
-  updateLocationPhoto,
   uploadLocationPhoto,
   type LocationPhotoAdminDto,
 } from '../api/locationPhotosApi'
@@ -19,7 +18,6 @@ export default function LocationPhotosPanel({ locationId, locationTitle }: Props
   const [uploading, setUploading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [altUk, setAltUk] = useState('')
-  const [setAsMain, setSetAsMain] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const load = useCallback(async () => {
@@ -46,8 +44,11 @@ export default function LocationPhotosPanel({ locationId, locationTitle }: Props
     e.target.value = ''
     if (!file) return
 
-    if (!file.type.startsWith('image/')) {
-      setError('Дозволені лише зображення (image/*).')
+    const isImage =
+      file.type.startsWith('image/') ||
+      /\.(jpe?g|png|webp|gif|avif|svg)$/i.test(file.name)
+    if (!isImage) {
+      setError('Дозволені лише файли зображень (jpg, png, webp тощо).')
       return
     }
 
@@ -56,26 +57,13 @@ export default function LocationPhotosPanel({ locationId, locationTitle }: Props
     try {
       await uploadLocationPhoto(locationId, file, {
         altUk: altUk.trim() || undefined,
-        isMain: setAsMain,
       })
       setAltUk('')
-      setSetAsMain(false)
       await load()
     } catch (err) {
       setError(err instanceof LocationPhotosApiError ? err.message : 'Помилка завантаження')
     } finally {
       setUploading(false)
-    }
-  }
-
-  const onSetMain = async (photo: LocationPhotoAdminDto) => {
-    if (photo.isMain) return
-    setError(null)
-    try {
-      await updateLocationPhoto(locationId, photo.id, { isMain: true })
-      await load()
-    } catch (err) {
-      setError(err instanceof LocationPhotosApiError ? err.message : 'Помилка оновлення')
     }
   }
 
@@ -110,15 +98,6 @@ export default function LocationPhotosPanel({ locationId, locationTitle }: Props
             disabled={uploading}
           />
         </label>
-        <label className="location-photos-checkbox">
-          <input
-            type="checkbox"
-            checked={setAsMain}
-            onChange={(e) => setSetAsMain(e.target.checked)}
-            disabled={uploading}
-          />
-          Головне фото
-        </label>
         <input
           ref={fileInputRef}
           type="file"
@@ -150,21 +129,11 @@ export default function LocationPhotosPanel({ locationId, locationTitle }: Props
                 <div className="location-photo-placeholder">Немає URL</div>
               )}
               <div className="location-photo-meta">
-                {photo.isMain ? <span className="location-photo-badge">Головне</span> : null}
                 {photo.altUk?.trim() ? (
                   <span className="location-photo-alt">{photo.altUk.trim()}</span>
                 ) : null}
               </div>
               <div className="location-photo-actions">
-                {!photo.isMain ? (
-                  <button
-                    type="button"
-                    className="btn"
-                    onClick={() => void onSetMain(photo)}
-                  >
-                    Зробити головним
-                  </button>
-                ) : null}
                 <button
                   type="button"
                   className="btn btn-danger"

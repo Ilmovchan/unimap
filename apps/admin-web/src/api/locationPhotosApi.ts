@@ -8,7 +8,6 @@ export type LocationPhotoAdminDto = {
   url: string | null
   storageKey: string
   altUk?: string | null
-  isMain: boolean
   createdAt: string
   updatedAt: string
 }
@@ -22,12 +21,11 @@ export function listLocationPhotos(locationId: string): Promise<LocationPhotoAdm
 export function uploadLocationPhoto(
   locationId: string,
   file: File,
-  options?: { altUk?: string; isMain?: boolean },
+  options?: { altUk?: string },
 ): Promise<LocationPhotoAdminDto> {
   const form = new FormData()
   form.append('file', file)
   if (options?.altUk?.trim()) form.append('altUk', options.altUk.trim())
-  if (options?.isMain) form.append('isMain', 'true')
 
   return apiRequestForm<LocationPhotoAdminDto>(
     `/api/admin/locations/${encodeURIComponent(locationId)}/photos`,
@@ -39,7 +37,7 @@ export function uploadLocationPhoto(
 export function updateLocationPhoto(
   locationId: string,
   photoId: string,
-  body: { altUk?: string | null; isMain?: boolean },
+  body: { altUk?: string | null },
 ): Promise<LocationPhotoAdminDto> {
   return apiRequest<LocationPhotoAdminDto>(
     `/api/admin/locations/${encodeURIComponent(locationId)}/photos/${encodeURIComponent(photoId)}`,

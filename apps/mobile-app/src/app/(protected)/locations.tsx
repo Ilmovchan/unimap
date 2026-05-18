@@ -2,6 +2,13 @@ import {
   fetchLocations,
   type LocationMapDto,
 } from "@/src/features/api/locationsClient";
+import LocationsCategoryFilter, {
+  createDefaultEnabledCategories,
+} from "@/src/features/locations/LocationsCategoryFilter";
+import {
+  loadEnabledCategoryKeys,
+  saveEnabledCategoryKeys,
+} from "@/src/features/locations/locationsCategoryFilterStorage";
 import {
   groupLocationsByType,
   type LocationTypeGroup,
@@ -9,9 +16,9 @@ import {
 import LocationSummaryCard from "@/src/features/locations/LocationSummaryCard";
 import { globalColors } from "@/src/styles/styles";
 import { Ionicons } from "@expo/vector-icons";
+import { Stack, useRouter } from "expo-router";
 import log from "loglevel";
-import { useRouter } from "expo-router";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
   RefreshControl,
@@ -29,6 +36,31 @@ export default function LocationsScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [filterOpen, setFilterOpen] = useState(false);
+  const [enabledCategoryKeys, setEnabledCategoryKeys] = useState(
+    createDefaultEnabledCategories,
+  );
+  const filterHydratedRef = useRef(false);
+  const userChangedFilterRef = useRef(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    void loadEnabledCategoryKeys().then((keys) => {
+      if (cancelled) return;
+      if (!userChangedFilterRef.current) {
+        setEnabledCategoryKeys(keys);
+      }
+      filterHydratedRef.current = true;
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!filterHydratedRef.current) return;
+    void saveEnabledCategoryKeys(enabledCategoryKeys);
+  }, [enabledCategoryKeys]);
 
   const load = useCallback(async (isRefresh: boolean) => {
     if (isRefresh) setRefreshing(true);
@@ -50,13 +82,43 @@ export default function LocationsScreen() {
     void load(false);
   }, [load]);
 
+  const toggleCategoryKey = useCallback((key: string) => {
+    userChangedFilterRef.current = true;
+    if (!filterHydratedRef.current) {
+      filterHydratedRef.current = true;
+    }
+    setEnabledCategoryKeys((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) {
+        next.delete(key);
+      } else {
+        next.add(key);
+      }
+      return next;
+    });
+  }, []);
+
   const sections = useMemo<LocationSection[]>(
     () =>
-      groupLocationsByType(locations).map((group) => ({
-        ...group,
-        data: group.items,
-      })),
-    [locations],
+      groupLocationsByType(locations)
+        .filter((group) => enabledCategoryKeys.has(group.key))
+        .map((group) => ({
+          ...group,
+          data: group.items,
+        })),
+    [locations, enabledCategoryKeys],
+  );
+
+  const headerFilter = useCallback(
+    () => (
+      <LocationsCategoryFilter
+        open={filterOpen}
+        onOpenChange={setFilterOpen}
+        enabledKeys={enabledCategoryKeys}
+        onToggleKey={toggleCategoryKey}
+      />
+    ),
+    [filterOpen, enabledCategoryKeys, toggleCategoryKey],
   );
 
   const openOnMap = useCallback(
@@ -69,54 +131,64 @@ export default function LocationsScreen() {
     [router],
   );
 
+  const listEmptyMessage = useMemo(() => {
+    if (error) return error;
+    if (locations.length > 0 && sections.length === 0) {
+      return "Увімкніть хоча б одну категорію у фільтрі.";
+    }
+    return "Локацій поки немає.";
+  }, [error, locations.length, sections.length]);
+
   if (loading && locations.length === 0) {
     return (
-      <View style={styles.centered}>
-        <ActivityIndicator size="small" color={globalColors.accent} />
-        <Text style={styles.loadingHint}>Завантаження…</Text>
-      </View>
+      <>
+        <Stack.Screen options={{ headerRight: headerFilter }} />
+        <View style={styles.centered}>
+          <ActivityIndicator size="small" color={globalColors.accent} />
+          <Text style={styles.loadingHint}>Завантаження…</Text>
+        </View>
+      </>
     );
   }
 
   return (
-    <SectionList
-      style={styles.screen}
-      contentContainerStyle={styles.scrollContent}
-      sections={sections}
-      keyExtractor={(item) => item.id}
-      stickySectionHeadersEnabled={false}
-      contentInsetAdjustmentBehavior="automatic"
-      refreshControl={
-        <RefreshControl
-          refreshing={refreshing}
-          onRefresh={() => void load(true)}
-          tintColor={globalColors.accent}
-        />
-      }
-      renderSectionHeader={({ section }) => (
-        <View style={styles.sectionHeader}>
-          <Ionicons
-            name={section.icon}
-            size={18}
-            color={globalColors.accent}
+    <>
+      <Stack.Screen options={{ headerRight: headerFilter }} />
+      <SectionList
+        style={styles.screen}
+        contentContainerStyle={styles.scrollContent}
+        sections={sections}
+        keyExtractor={(item) => item.id}
+        stickySectionHeadersEnabled={false}
+        contentInsetAdjustmentBehavior="automatic"
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={() => void load(true)}
+            tintColor={globalColors.accent}
           />
-          <Text style={styles.sectionTitle}>{section.title}</Text>
-        </View>
-      )}
-      renderItem={({ item }) => (
-        <LocationSummaryCard
-          location={item}
-          onPress={() => openOnMap(item.id)}
-        />
-      )}
-      ListEmptyComponent={
-        error ? (
-          <Text style={styles.empty}>{error}</Text>
-        ) : (
-          <Text style={styles.empty}>Локацій поки немає.</Text>
-        )
-      }
-    />
+        }
+        renderSectionHeader={({ section }) => (
+          <View style={styles.sectionHeader}>
+            <Ionicons
+              name={section.icon}
+              size={18}
+              color={globalColors.accent}
+            />
+            <Text style={styles.sectionTitle}>{section.title}</Text>
+          </View>
+        )}
+        renderItem={({ item }) => (
+          <LocationSummaryCard
+            location={item}
+            onPress={() => openOnMap(item.id)}
+          />
+        )}
+        ListEmptyComponent={
+          <Text style={styles.empty}>{listEmptyMessage}</Text>
+        }
+      />
+    </>
   );
 }
 
@@ -129,6 +201,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingTop: 8,
     paddingBottom: 32,
+    flexGrow: 1,
   },
   sectionHeader: {
     flexDirection: "row",

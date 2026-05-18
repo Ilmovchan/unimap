@@ -18,8 +18,8 @@ const ZOOM_FOCUS_REDUCTION = 0.3;
 /** Кнопка «до мене» — як раніше (ближче). */
 const ZOOM_PEAK_NAVIGATE_TO_USER = 20;
 
-/** Тап по одному маркеру — далі від землі (менший зум), щоб бачити оточення. */
-const ZOOM_PEAK_SINGLE_MARKER = 17;
+/** Тап по одному маркеру — трохи далі від землі, ніж «до мене». */
+const ZOOM_PEAK_SINGLE_MARKER = 16.5;
 
 function zoomLevelFromPeak(peak: number): number {
   const span = peak - ZOOM_FOCUS_REFERENCE_START;

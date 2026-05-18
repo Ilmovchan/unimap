@@ -28,10 +28,18 @@ public sealed class LocalFilePictureProvider : IPictureProvider
             return photo.ImageUrl.Trim();
 
         if (!string.IsNullOrWhiteSpace(photo.StorageKey))
-            return BuildApiUrl(photo.StorageKey.Trim(), requestBaseUrl);
+            return ResolvePublicUrlForStorageKey(photo.StorageKey, requestBaseUrl);
 
         var imageUrl = photo.ImageUrl?.Trim();
         return string.IsNullOrWhiteSpace(imageUrl) ? null : imageUrl;
+    }
+
+    public string? ResolvePublicUrlForStorageKey(string storageKey, string? requestBaseUrl)
+    {
+        if (string.IsNullOrWhiteSpace(storageKey))
+            return null;
+
+        return BuildApiUrl(storageKey.Trim(), requestBaseUrl);
     }
 
     public Task<PictureContent?> OpenReadAsync(

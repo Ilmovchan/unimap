@@ -1,3 +1,4 @@
+using app.Abstractions;
 using app.Abstractions.Administration;
 using app.Models;
 using app.Models.Admin;
@@ -11,7 +12,8 @@ namespace app.Services.Administration;
 public sealed class AdminLocationPhotoService(
     IAdminLocationRepository locationRepository,
     IAdminLocationPhotoRepository photoRepository,
-    IPictureProvider pictureProvider) : IAdminLocationPhotoService
+    IPictureProvider pictureProvider,
+    IUserApiCacheInvalidator cacheInvalidator) : IAdminLocationPhotoService
 {
     private const long MaxUploadBytes = 10 * 1024 * 1024;
 
@@ -29,6 +31,7 @@ public sealed class AdminLocationPhotoService(
     public async Task<ServiceResult<LocationPhoto>> UploadAsync(
         Guid locationId,
         LocationPhotoAdminUploadCommand command,
+        string? requestBaseUrl,
         CancellationToken cancellationToken = default)
     {
         if (command.Length == 0)
@@ -37,7 +40,7 @@ public sealed class AdminLocationPhotoService(
         if (command.Length > MaxUploadBytes)
             return ServiceResult<LocationPhoto>.Fail("file exceeds 10 MB limit.");
 
-        if (!IsAllowedImageContentType(command.ContentType))
+        if (!PictureUploadValidation.IsAllowedImage(command.ContentType, command.FileName))
             return ServiceResult<LocationPhoto>.Fail("only image files are allowed.");
 
         if (!await locationRepository.ExistsAsync(locationId, cancellationToken))
@@ -51,25 +54,34 @@ public sealed class AdminLocationPhotoService(
                 $"{Guid.NewGuid():N}{Path.GetExtension(command.FileName)}");
         }
 
-        await pictureProvider.SaveAsync(
-            storageKey,
-            command.Content,
-            command.ContentType,
-            cancellationToken);
+        await using (var buffer = new MemoryStream())
+        {
+            await command.Content.CopyToAsync(buffer, cancellationToken);
+            if (buffer.Length == 0)
+                return ServiceResult<LocationPhoto>.Fail("file is required.");
 
-        var setMain = command.IsMain == true;
-        var hasAnyPhoto = await photoRepository.LocationHasPhotosAsync(locationId, cancellationToken);
+            buffer.Position = 0;
+            await pictureProvider.SaveAsync(
+                storageKey,
+                buffer,
+                command.ContentType,
+                cancellationToken);
+        }
+
+        var publicUrl = pictureProvider.ResolvePublicUrlForStorageKey(storageKey, requestBaseUrl)
+            ?? string.Empty;
+
         var photo = new LocationPhoto
         {
             Id = Guid.NewGuid(),
             LocationId = locationId,
             StorageKey = storageKey,
-            ImageUrl = string.Empty,
+            ImageUrl = publicUrl,
             AltUk = string.IsNullOrWhiteSpace(command.AltUk) ? null : command.AltUk.Trim(),
-            IsMain = setMain || !hasAnyPhoto,
         };
 
-        await photoRepository.AddAsync(photo, setMain, cancellationToken);
+        await photoRepository.AddAsync(photo, cancellationToken);
+        await cacheInvalidator.InvalidateLocationsAsync(cancellationToken);
         return ServiceResult<LocationPhoto>.Ok(photo);
     }
 
@@ -79,7 +91,6 @@ public sealed class AdminLocationPhotoService(
         LocationPhotoAdminUpdateCommand command,
         CancellationToken cancellationToken = default)
     {
-        var clearOthers = command.IsMain == true;
         var updated = await photoRepository.UpdateAsync(
             locationId,
             photoId,
@@ -87,18 +98,14 @@ public sealed class AdminLocationPhotoService(
             {
                 if (command.AltUk is not null)
                     photo.AltUk = string.IsNullOrWhiteSpace(command.AltUk) ? null : command.AltUk.Trim();
-
-                if (command.IsMain == true)
-                    photo.IsMain = true;
-                else if (command.IsMain == false && photo.IsMain)
-                    photo.IsMain = false;
             },
-            clearOthers,
             cancellationToken);
 
-        return updated is null
-            ? ServiceResults.NotFound<LocationPhoto>()
-            : ServiceResult<LocationPhoto>.Ok(updated);
+        if (updated is null)
+            return ServiceResults.NotFound<LocationPhoto>();
+
+        await cacheInvalidator.InvalidateLocationsAsync(cancellationToken);
+        return ServiceResult<LocationPhoto>.Ok(updated);
     }
 
     public async Task<ServiceResult<bool>> DeleteAsync(
@@ -113,10 +120,7 @@ public sealed class AdminLocationPhotoService(
         if (!string.IsNullOrWhiteSpace(photo.StorageKey))
             await pictureProvider.DeleteAsync(photo.StorageKey, cancellationToken);
 
+        await cacheInvalidator.InvalidateLocationsAsync(cancellationToken);
         return ServiceResult<bool>.Ok(true);
     }
-
-    private static bool IsAllowedImageContentType(string? contentType) =>
-        !string.IsNullOrWhiteSpace(contentType)
-        && contentType.StartsWith("image/", StringComparison.OrdinalIgnoreCase);
 }

@@ -24,9 +24,7 @@ public static class LocationPhotoResolver
             .ToList();
 
     private static IEnumerable<LocationPhoto> OrderedPhotos(Location location) =>
-        location.Photos
-            .OrderByDescending(p => p.IsMain)
-            .ThenBy(p => p.CreatedAt);
+        location.Photos.OrderBy(p => p.CreatedAt);
 
     private static object? MapPhoto(
         LocationPhoto photo,
@@ -42,7 +40,6 @@ public static class LocationPhotoResolver
             photo.Id,
             url,
             altUk = photo.AltUk,
-            isMain = photo.IsMain,
         };
     }
 

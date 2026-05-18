@@ -1,3 +1,4 @@
+using app.Abstractions;
 using app.Abstractions.Administration;
 using app.Models;
 using app.Models.Admin;
@@ -6,8 +7,9 @@ using domain.Entities;
 
 namespace app.Services.Administration;
 
-public sealed class AdminUniversityObjectTypeService(IAdminUniversityObjectTypeRepository repository)
-    : IAdminUniversityObjectTypeService
+public sealed class AdminUniversityObjectTypeService(
+    IAdminUniversityObjectTypeRepository repository,
+    IUserApiCacheInvalidator cacheInvalidator) : IAdminUniversityObjectTypeService
 {
     public Task<IReadOnlyList<UniversityObjectType>> ListAsync(CancellationToken cancellationToken = default) =>
         repository.ListAsync(cancellationToken);
@@ -30,6 +32,7 @@ public sealed class AdminUniversityObjectTypeService(IAdminUniversityObjectTypeR
         };
 
         await repository.AddAsync(entity, cancellationToken);
+        await cacheInvalidator.InvalidateLocationsAsync(cancellationToken);
         return ServiceResult<UniversityObjectType>.Ok(entity);
     }
 
@@ -49,9 +52,11 @@ public sealed class AdminUniversityObjectTypeService(IAdminUniversityObjectTypeR
             },
             cancellationToken);
 
-        return updated is null
-            ? ServiceResults.NotFound<UniversityObjectType>()
-            : ServiceResult<UniversityObjectType>.Ok(updated);
+        if (updated is null)
+            return ServiceResults.NotFound<UniversityObjectType>();
+
+        await cacheInvalidator.InvalidateLocationsAsync(cancellationToken);
+        return ServiceResult<UniversityObjectType>.Ok(updated);
     }
 
     public async Task<ServiceResult<bool>> DeleteAsync(
@@ -68,6 +73,7 @@ public sealed class AdminUniversityObjectTypeService(IAdminUniversityObjectTypeR
                 "Cannot delete: university objects reference this type.");
         }
 
+        await cacheInvalidator.InvalidateLocationsAsync(cancellationToken);
         return ServiceResult<bool>.Ok(true);
     }
 }

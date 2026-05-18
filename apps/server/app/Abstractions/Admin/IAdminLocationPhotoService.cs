@@ -13,6 +13,7 @@ public interface IAdminLocationPhotoService
     Task<ServiceResult<LocationPhoto>> UploadAsync(
         Guid locationId,
         LocationPhotoAdminUploadCommand command,
+        string? requestBaseUrl,
         CancellationToken cancellationToken = default);
 
     Task<ServiceResult<LocationPhoto>> UpdateAsync(

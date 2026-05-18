@@ -31,6 +31,8 @@ const ICON_BY_OBJECT_TYPE: Record<string, UniversityObjectIconName> = {
 
   faculty: "flask",
 
+  garden: "leaf",
+
   vocational_college: "school",
   professional_college: "school",
   college: "school",
@@ -72,6 +74,7 @@ const ICON_BY_TITLE_UK: TitleHint[] = [
   { pattern: /укритт/i, icon: "shield-home" },
   { pattern: /стадіон/i, icon: "stadium" },
   { pattern: /спортивн/i, icon: "dumbbell" },
+  { pattern: /сад|парк|сквер|garden|ботанічн/i, icon: "leaf" },
   { pattern: /\bінше\b/i, icon: "dots-horizontal-circle" },
 ];
 

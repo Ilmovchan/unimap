@@ -1,50 +1,50 @@
 using System.Text.Json;
+using Microsoft.Extensions.Options;
 
 namespace infrastructure.Routing;
 
-public class OpenRouteServiceRoutingProvider : IRoutingProvider
+public class OpenRouteServiceRoutingProvider(
+    IHttpClientFactory httpClientFactory,
+    IOptions<OpenRouteServiceOptions> options) : IRoutingProvider
 {
-    private static readonly HttpClient HttpClient = new();
-
-    private const string Apikey = 
-        "eyJvcmciOiI1YjNjZTM1OTc4NTExMTAwMDFjZjYyNDgiLCJpZCI6IjExYWViZDk1OTIwNDRlOGQ5ZWRiYmE0MmUwNDc5YjNlIiwiaCI6Im11cm11cjY0In0=";
-
     public async Task<OpenRouteResponse?> NavigateAsync(
         double startLat, double startLng,
         double endLat, double endLng,
         string profile = "")
     {
+        var opts = options.Value;
+        if (string.IsNullOrWhiteSpace(opts.ApiKey))
+        {
+            throw new InvalidOperationException("ExternalApis:OpenRouteService:ApiKey is not configured.");
+        }
+
+        var profileSegment = string.IsNullOrWhiteSpace(profile) ? "foot-walking" : profile.Trim();
         var url =
-            $"https://api.openrouteservice.org/v2/directions/{profile}" +
-            $"?api_key={Apikey}" +
-            $"&start={startLng},{startLat}" +
-            $"&end={endLng},{endLat}";
+            $"{opts.BaseUrl.TrimEnd('/')}/v2/directions/{profileSegment}" +
+            $"?api_key={Uri.EscapeDataString(opts.ApiKey)}" +
+            $"&start={startLng.ToString(System.Globalization.CultureInfo.InvariantCulture)},{startLat.ToString(System.Globalization.CultureInfo.InvariantCulture)}" +
+            $"&end={endLng.ToString(System.Globalization.CultureInfo.InvariantCulture)},{endLat.ToString(System.Globalization.CultureInfo.InvariantCulture)}";
 
-        HttpClient.DefaultRequestHeaders.Clear();
-        HttpClient.DefaultRequestHeaders.TryAddWithoutValidation(
+        var client = httpClientFactory.CreateClient("OpenRouteService");
+        using var request = new HttpRequestMessage(HttpMethod.Get, url);
+        request.Headers.TryAddWithoutValidation(
             "Accept",
-            "application/json, application/geo+json, application/gpx+xml, img/png; charset=utf-8"
-        );
+            "application/json, application/geo+json, application/gpx+xml, img/png; charset=utf-8");
 
-        var response = await HttpClient.GetAsync(url);
-
+        var response = await client.SendAsync(request);
         var responseData = await response.Content.ReadAsStringAsync();
 
         if (!response.IsSuccessStatusCode)
         {
             throw new HttpRequestException(
-                $"OpenRouteService error: {(int)response.StatusCode} {response.ReasonPhrase}. Body: {responseData}"
-            );
+                $"OpenRouteService error: {(int)response.StatusCode} {response.ReasonPhrase}. Body: {responseData}");
         }
 
-        var data = JsonSerializer.Deserialize<OpenRouteResponse>(
+        return JsonSerializer.Deserialize<OpenRouteResponse>(
             responseData,
             new JsonSerializerOptions
             {
-                PropertyNameCaseInsensitive = true
-            }
-        );
-
-        return data;
+                PropertyNameCaseInsensitive = true,
+            });
     }
 }

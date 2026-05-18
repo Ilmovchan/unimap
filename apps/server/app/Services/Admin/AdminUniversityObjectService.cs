@@ -1,3 +1,4 @@
+using app.Abstractions;
 using app.Abstractions.Administration;
 using app.Models;
 using app.Models.Admin;
@@ -6,8 +7,9 @@ using domain.Entities;
 
 namespace app.Services.Administration;
 
-public sealed class AdminUniversityObjectService(IAdminUniversityObjectRepository repository)
-    : IAdminUniversityObjectService
+public sealed class AdminUniversityObjectService(
+    IAdminUniversityObjectRepository repository,
+    IUserApiCacheInvalidator cacheInvalidator) : IAdminUniversityObjectService
 {
     public Task<IReadOnlyList<UniversityObject>> ListAsync(CancellationToken cancellationToken = default) =>
         repository.ListAsync(cancellationToken);
@@ -42,6 +44,7 @@ public sealed class AdminUniversityObjectService(IAdminUniversityObjectRepositor
         };
 
         await repository.AddAsync(entity, cancellationToken);
+        await cacheInvalidator.InvalidateLocationsAsync(cancellationToken);
         return ServiceResult<UniversityObject>.Ok(entity);
     }
 
@@ -77,9 +80,11 @@ public sealed class AdminUniversityObjectService(IAdminUniversityObjectRepositor
             },
             cancellationToken);
 
-        return updated is null
-            ? ServiceResults.NotFound<UniversityObject>()
-            : ServiceResult<UniversityObject>.Ok(updated);
+        if (updated is null)
+            return ServiceResults.NotFound<UniversityObject>();
+
+        await cacheInvalidator.InvalidateLocationsAsync(cancellationToken);
+        return ServiceResult<UniversityObject>.Ok(updated);
     }
 
     public async Task<ServiceResult<bool>> DeleteAsync(
@@ -87,8 +92,10 @@ public sealed class AdminUniversityObjectService(IAdminUniversityObjectRepositor
         CancellationToken cancellationToken = default)
     {
         var deleted = await repository.DeleteByIdAsync(id, cancellationToken);
-        return deleted
-            ? ServiceResult<bool>.Ok(true)
-            : ServiceResults.NotFound<bool>();
+        if (!deleted)
+            return ServiceResults.NotFound<bool>();
+
+        await cacheInvalidator.InvalidateLocationsAsync(cancellationToken);
+        return ServiceResult<bool>.Ok(true);
     }
 }
