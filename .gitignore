@@ -1,0 +1,12 @@
+# macOS системні файли
+.DS_Store
+
+# Node.js
+node_modules/
+build/
+
+# Логи
+logs/
+*.log
+
+docs/
