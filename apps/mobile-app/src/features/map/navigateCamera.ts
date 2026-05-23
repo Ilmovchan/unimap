@@ -150,7 +150,7 @@ export function bearingDegreesLngLat(
   return (((θ * 180) / Math.PI + 360) % 360);
 }
 
-const IMMERSIVE_ROUTE_ZOOM_LEVEL = 17.4;
+export const IMMERSIVE_ROUTE_ZOOM_LEVEL = 17.4;
 
 /** Камера «ніби з точки користувача»: нахил, напрямок на кінець маршруту. */
 export function focusCameraRouteFirstPerson(

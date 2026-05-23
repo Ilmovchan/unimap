@@ -2,10 +2,7 @@ using api.AdminEndpoints;
 using api.Auth;
 using api.Endpoints;
 using app;
-using domain.Abstractions;
 using infrastructure;
-using domain.Entities;
-using infrastructure.Auth;
 using infrastructure.BackgroundServices;
 using infrastructure.Pictures;
 using Microsoft.EntityFrameworkCore;
@@ -26,13 +23,17 @@ builder.Services.AddHostedService<LocationAddressJsonBackfillWorker>();
 builder.Services.AddPictureStorage(builder.Configuration);
 builder.Services.AddJwtCookieAuthentication(builder.Configuration);
 
+var corsOrigins = builder.Configuration.GetSection("Cors:Origins").Get<string[]>() ??
+[
+    "http://localhost:5173",
+    "http://127.0.0.1:5173",
+];
+
 builder.Services.AddCors(options =>
 {
     options.AddDefaultPolicy(policy =>
         policy
-            .WithOrigins(
-                "http://localhost:5173",
-                "http://127.0.0.1:5173")
+            .WithOrigins(corsOrigins)
             .AllowAnyHeader()
             .AllowAnyMethod()
             .AllowCredentials());
@@ -48,7 +49,7 @@ var picturesRoot = Path.Combine(
     builder.Configuration.GetValue("Pictures:LocalRootPath", "pictures") ?? "pictures");
 Directory.CreateDirectory(picturesRoot);
 
-if (app.Environment.IsDevelopment())
+if (app.Environment.IsDevelopment() || app.Environment.IsEnvironment("Docker"))
 {
     app.UseSwagger();
     app.UseSwaggerUI();

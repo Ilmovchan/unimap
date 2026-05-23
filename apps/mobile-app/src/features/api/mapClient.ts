@@ -1,16 +1,16 @@
+import { serverApiBase } from "@/src/config/serverApi";
 import log from "loglevel";
-
-function apiBase(): string {
-  const raw = process.env.EXPO_PUBLIC_UNIMAP_SERVER_API_LINK;
-  return (typeof raw === "string" ? raw.trim() : "").replace(/\/$/, "");
-}
 
 /** URL стилю карти через бекенд (проксі MapTiler). */
 export function mapStyleUrl(): string {
-  const base = apiBase();
+  const base = serverApiBase();
   if (!base) {
     log.warn("[UniMap] EXPO_PUBLIC_UNIMAP_SERVER_API_LINK is not set");
     throw new Error("EXPO_PUBLIC_UNIMAP_SERVER_API_LINK is not set");
   }
-  return `${base}/map/style.json`;
+  const url = `${base}/map/style.json`;
+  if (__DEV__) {
+    log.info("[UniMap] mapStyleUrl:", url);
+  }
+  return url;
 }

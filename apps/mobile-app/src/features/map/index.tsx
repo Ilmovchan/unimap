@@ -8,6 +8,7 @@ export {
   focusCameraToFitBounds,
   focusCameraToRoutePath,
   focusCameraToRoutePathAfterImmersive,
+  IMMERSIVE_ROUTE_ZOOM_LEVEL,
   MARKER_FOCUS_ANIMATION_DURATION_MS,
   markerFocusZoomLevel,
   ROUTE_CAMERA_PITCH_DEG,

@@ -1,22 +1,32 @@
 import { fetchLocationMarkers } from "@/src/features/api/locationsClient";
 import { useLocation } from "@/src/features/core/location/stores/LocationProvider";
+import * as Haptics from "expo-haptics";
 import Map, {
+  bearingDegreesLngLat,
   focusCameraLikeNavigateButton,
   focusCameraRouteFirstPerson,
   focusCameraToRoutePath,
   focusCameraToRoutePathAfterImmersive,
+  IMMERSIVE_ROUTE_ZOOM_LEVEL,
+  MARKER_FOCUS_ANIMATION_DURATION_MS,
+  ROUTE_CAMERA_PITCH_DEG,
   useMapRouteStore,
   type MapMarkerPoint,
 } from "@/src/features/map/";
+import { hasArrivedAtDestination } from "@/src/features/map/navigationArrival";
 import LocationMapPreviewSheet from "@/src/features/map/LocationMapPreviewSheet";
+import { useRouteRefreshOnMove } from "@/src/features/map/useRouteRefreshOnMove";
+import { trimRouteCoordinatesAheadOfUser } from "@/src/features/map/trimRouteAheadOfUser";
+import type { RouteLineFeature } from "@/src/features/map/mapRouteStore";
 import LayoutButton from "@/src/features/map/components/LayoutButton";
 import MapSearchChrome from "@/src/features/map/components/MapSearchChrome";
+import { MAP_CAMERA_LIMITS_ENABLED } from "@/src/features/map/odesaMapBounds";
 import { MAP_SEARCH_UI_ENABLED } from "@/src/features/map/mapSearchConfig";
 import { syncNewsAppBadge } from "@/src/features/news/newsAppBadge";
 import { getUnreadNewsCount } from "@/src/features/news/newsClient";
 import { globalColors } from "@/src/styles/styles";
 import { Ionicons } from "@expo/vector-icons";
-import { useFocusEffect } from "@react-navigation/native";
+import { useFocusEffect, useNavigation } from "@react-navigation/native";
 import { CameraRef } from "@maplibre/maplibre-react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import log from "loglevel";
@@ -40,6 +50,7 @@ export default function MapScreen() {
     focusLocation?: string | string[];
   }>();
   const insets = useSafeAreaInsets();
+  const navigation = useNavigation();
   const cameraRef = useRef<CameraRef | null>(null);
   const location = useLocation().location;
   const [markers, setMarkers] = useState<MapMarkerPoint[]>([]);
@@ -49,7 +60,9 @@ export default function MapScreen() {
   const [cameraFollowUser, setCameraFollowUser] = useState(false);
 
   useEffect(() => {
-    setCameraFollowUser(true);
+    if (MAP_CAMERA_LIMITS_ENABLED) {
+      setCameraFollowUser(true);
+    }
   }, []);
   const routeFeature = useMapRouteStore((s) => s.routeFeature);
   const clearRoute = useMapRouteStore((s) => s.clearRoute);
@@ -59,6 +72,9 @@ export default function MapScreen() {
   locationRef.current = location;
   const hadRouteForCameraRef = useRef(false);
   const prevRouteCameraImmersiveRef = useRef(routeCameraImmersive);
+  const arrivalHapticDoneRef = useRef(false);
+  /** Не перебиваємо flyTo при вході в immersive setCamera-оновленнями GPS. */
+  const immersiveEnterAnimatingRef = useRef(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -105,6 +121,27 @@ export default function MapScreen() {
   }, []);
 
   useFocusEffect(refreshUnreadNewsCount);
+
+  /** Закриваємо картку при виході з екрана карти (freezeOnBlur може не застосувати setState з кнопок). */
+  useEffect(() => {
+    const unsub = navigation.addListener("blur", () => {
+      setSelectedLocationId(null);
+    });
+    return unsub;
+  }, [navigation]);
+
+  const openLocationSheet = useCallback(
+    (locationId: string) => {
+      clearRoute();
+      if (selectedLocationId === locationId) {
+        setSelectedLocationId(null);
+        queueMicrotask(() => setSelectedLocationId(locationId));
+      } else {
+        setSelectedLocationId(locationId);
+      }
+    },
+    [clearRoute, selectedLocationId],
+  );
 
   useEffect(() => {
     const focusId = focusLocationParam(focusLocationRaw);
@@ -176,8 +213,13 @@ export default function MapScreen() {
 
     if (routeCameraImmersive) {
       setCameraFollowUser(false);
+      immersiveEnterAnimatingRef.current = true;
       focusCameraRouteFirstPerson(cameraRef, userLngLat, path);
+      setTimeout(() => {
+        immersiveEnterAnimatingRef.current = false;
+      }, MARKER_FOCUS_ANIMATION_DURATION_MS + 80);
     } else {
+      immersiveEnterAnimatingRef.current = false;
       setCameraFollowUser(false);
       if (returningFromImmersive) {
         focusCameraToRoutePathAfterImmersive(cameraRef, path);
@@ -258,6 +300,105 @@ export default function MapScreen() {
     return markers.filter((m) => m.id === selectedLocationId);
   }, [markers, routeFeature, selectedLocationId]);
 
+  const routeDestination = useMemo(() => {
+    if (!selectedLocationId) return null;
+    const m = markers.find((d) => d.id === selectedLocationId);
+    if (!m || !Number.isFinite(m.lat) || !Number.isFinite(m.lng)) {
+      return null;
+    }
+    return { lat: m.lat, lng: m.lng };
+  }, [markers, selectedLocationId]);
+
+  const routeActive = Boolean(
+    routeFeature?.geometry?.coordinates &&
+      routeFeature.geometry.coordinates.length >= 2,
+  );
+
+  const hasArrived = hasArrivedAtDestination(
+    routeActive,
+    location,
+    routeDestination,
+  );
+
+  useEffect(() => {
+    if (!routeActive) {
+      arrivalHapticDoneRef.current = false;
+      return;
+    }
+    if (!hasArrived || arrivalHapticDoneRef.current) return;
+    arrivalHapticDoneRef.current = true;
+    void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+  }, [hasArrived, routeActive]);
+
+  useRouteRefreshOnMove(
+    location?.coords.latitude ?? NaN,
+    location?.coords.longitude ?? NaN,
+    routeDestination,
+    routeActive && !hasArrived,
+  );
+
+  /** Лінія без «хвоста»; при прибутті маршрут не показуємо. */
+  const displayRouteFeature = useMemo((): RouteLineFeature | null => {
+    if (hasArrived) return null;
+    const coords = routeFeature?.geometry?.coordinates;
+    if (!routeFeature || !coords || coords.length < 2 || !location) {
+      return routeFeature;
+    }
+    const trimmed = trimRouteCoordinatesAheadOfUser(
+      coords as [number, number][],
+      location.coords.longitude,
+      location.coords.latitude,
+    );
+    if (trimmed.length < 2) {
+      return null;
+    }
+    return {
+      ...routeFeature,
+      geometry: {
+        type: "LineString",
+        coordinates: trimmed,
+      },
+    };
+  }, [
+    hasArrived,
+    routeFeature,
+    location?.coords.latitude,
+    location?.coords.longitude,
+  ]);
+
+  /** Immersive: камера слідує за користувачем і дивиться на ціль. */
+  useEffect(() => {
+    if (!routeCameraImmersive || !routeActive || hasArrived) return;
+    if (immersiveEnterAnimatingRef.current) return;
+    if (!location || !routeDestination) return;
+
+    const userLngLat: [number, number] = [
+      location.coords.longitude,
+      location.coords.latitude,
+    ];
+    const destLngLat: [number, number] = [
+      routeDestination.lng,
+      routeDestination.lat,
+    ];
+    const heading = bearingDegreesLngLat(userLngLat, destLngLat);
+
+    cameraRef.current?.setCamera({
+      centerCoordinate: userLngLat,
+      zoomLevel: IMMERSIVE_ROUTE_ZOOM_LEVEL,
+      pitch: ROUTE_CAMERA_PITCH_DEG,
+      heading,
+      animationDuration: 280,
+      animationMode: "easeTo",
+    });
+  }, [
+    routeCameraImmersive,
+    routeActive,
+    hasArrived,
+    routeDestination,
+    location?.coords.latitude,
+    location?.coords.longitude,
+  ]);
+
   if (!location) return null;
 
   const fabTop = insets.top + 12;
@@ -272,18 +413,16 @@ export default function MapScreen() {
         cameraRef={cameraRef}
         followUserLocation={cameraFollowUser}
         onStopFollowingUser={() => setCameraFollowUser(false)}
-        routeFeature={routeFeature}
+        routeFeature={displayRouteFeature}
         selectedLocationId={selectedLocationId}
-        onMarkerPress={(locationId) => {
-          clearRoute();
-          setSelectedLocationId(locationId);
-        }}
+        onMarkerPress={openLocationSheet}
       />
 
       <View style={styles.sheetLayer} pointerEvents="box-none">
         <LocationMapPreviewSheet
           locationId={selectedLocationId}
           userLocation={location}
+          hasArrived={hasArrived}
           routeCameraImmersive={routeCameraImmersive}
           onToggleRouteCameraImmersive={toggleRouteCameraImmersive}
           onRouteNavigationBack={handleRouteNavigationBack}

@@ -1,3 +1,4 @@
+import { rewriteDevServerHost, serverApiBase } from "@/src/config/serverApi";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import log from "loglevel";
 
@@ -14,11 +15,6 @@ export type NewsItemDto = {
 
 const READ_IDS_STORAGE_KEY = "unimap.news.readIds";
 const NEWS_CACHE_STORAGE_KEY = "unimap.news.cache";
-
-function apiBase(): string {
-  const raw = process.env.EXPO_PUBLIC_UNIMAP_SERVER_API_LINK;
-  return (typeof raw === "string" ? raw.trim() : "").replace(/\/$/, "");
-}
 
 function pickRaw(
   raw: Record<string, unknown>,
@@ -81,7 +77,9 @@ function normalizeNewsItem(raw: Record<string, unknown>): NewsItemDto | null {
 
   const img = pickRaw(raw, "imageUrl", "ImageUrl");
   const imageUrl =
-    img === undefined || img === null ? null : String(img).trim() || null;
+    img === undefined || img === null
+      ? null
+      : rewriteDevServerHost(String(img).trim());
 
   return {
     id,
@@ -123,7 +121,7 @@ async function writeCachedNews(items: NewsItemDto[]): Promise<void> {
 }
 
 export async function fetchNews(): Promise<NewsItemDto[]> {
-  const base = apiBase();
+  const base = serverApiBase();
   if (!base) {
     log.warn("[UniMap] EXPO_PUBLIC_UNIMAP_SERVER_API_LINK is not set");
     throw new Error("EXPO_PUBLIC_UNIMAP_SERVER_API_LINK is not set");

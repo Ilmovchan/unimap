@@ -31,6 +31,7 @@ import {
   focusCameraToFitBounds,
 } from "./navigateCamera";
 import {
+  MAP_CAMERA_LIMITS_ENABLED,
   MAP_MAX_ZOOM_LEVEL,
   MAP_MIN_ZOOM_LEVEL,
   ODESA_MAX_BOUNDS,
@@ -176,7 +177,7 @@ const Map = ({
   routeFeature = null,
   selectedLocationId = null,
 }: Props) => {
-  const apiUrl = mapStyleUrl();
+  const apiUrl = useMemo(() => mapStyleUrl(), []);
   /** MapLibre застосовує maxBounds лише коли followUserLocation === false. */
   const [cameraFollowEnabled, setCameraFollowEnabled] = useState(false);
   const followUserRef = useRef(followUserLocation);
@@ -348,10 +349,11 @@ const Map = ({
         return;
       }
 
+      if (id) onMarkerPress?.(id);
+
       releaseFollowAndRun(() => {
         runCameraCommand(0, () => {
           focusCameraLikeNavigateButton(cameraRef, lngLat, "tapSingleMarker");
-          if (id) onMarkerPress?.(id);
         });
       });
     },
@@ -449,6 +451,7 @@ const Map = ({
   return (
     <View style={{ flex: 1 }}>
       <MapView
+        key={apiUrl}
         style={{ flex: 1 }}
         mapStyle={apiUrl}
         attributionEnabled={true}
@@ -475,9 +478,13 @@ const Map = ({
               pitch: 0,
               animationMode: "moveTo",
             }}
-            maxBounds={ODESA_MAX_BOUNDS}
-            minZoomLevel={MAP_MIN_ZOOM_LEVEL}
-            maxZoomLevel={MAP_MAX_ZOOM_LEVEL}
+            {...(MAP_CAMERA_LIMITS_ENABLED
+              ? {
+                  maxBounds: ODESA_MAX_BOUNDS,
+                  minZoomLevel: MAP_MIN_ZOOM_LEVEL,
+                  maxZoomLevel: MAP_MAX_ZOOM_LEVEL,
+                }
+              : {})}
             followUserLocation={cameraFollowEnabled}
             ref={cameraRef}
           />

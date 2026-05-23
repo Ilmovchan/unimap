@@ -16,11 +16,13 @@ import * as Location from "expo-location";
 import BottomSheet, {
   BottomSheetBackdrop,
   BottomSheetScrollView,
+  BottomSheetView,
 } from "@gorhom/bottom-sheet";
 import log from "loglevel";
 import React, {
   useCallback,
   useEffect,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -29,6 +31,7 @@ import React, {
 import {
   ActivityIndicator,
   Alert,
+  Dimensions,
   Platform,
   Pressable,
   StyleSheet,
@@ -41,33 +44,28 @@ import { useMapRouteStore } from "./mapRouteStore";
 type Props = {
   locationId: string | null;
   userLocation: Location.LocationObject;
+  hasArrived: boolean;
   routeCameraImmersive: boolean;
   onToggleRouteCameraImmersive: () => void;
   onRouteNavigationBack: () => void;
   onDismiss: () => void;
 };
 
-/** Не змінюємо кількість snap-пойнтів під час навігації — інакше sheet закривається. */
-const SNAP_POINTS: (string | number)[] = ["40%", "94%"];
+/** Той самий «компактний» snap, що index 0 у картці локації. */
+const SHEET_SNAP_COMPACT = "40%";
+const PREVIEW_SNAP_POINTS: (string | number)[] = [SHEET_SNAP_COMPACT, "94%"];
 
-const ROUTE_REFRESH_EVERY_METERS = 100;
+const NAV_HEADER_BLOCK_HEIGHT = 44;
+const NAV_HEADER_MARGIN_BOTTOM = 10;
+const NAV_SHEET_HANDLE_HEIGHT = 10;
 
-function distanceMetersOnEarth(
-  lat1: number,
-  lng1: number,
-  lat2: number,
-  lng2: number,
-): number {
-  const R = 6371000;
-  const φ1 = (lat1 * Math.PI) / 180;
-  const φ2 = (lat2 * Math.PI) / 180;
-  const Δφ = ((lat2 - lat1) * Math.PI) / 180;
-  const Δλ = ((lng2 - lng1) * Math.PI) / 180;
-  const a =
-    Math.sin(Δφ / 2) * Math.sin(Δφ / 2) +
-    Math.cos(φ1) * Math.cos(φ2) * Math.sin(Δλ / 2) * Math.sin(Δλ / 2);
-  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-  return R * c;
+/** Індекси snap під час маршруту: 0 — лише title-шапка, 1 — як preview index 0 (40%). */
+const NAV_SHEET_COLLAPSED_INDEX = 0;
+const NAV_SHEET_EXPANDED_INDEX = 1;
+
+/** Мінімум: ручка + один рядок заголовка + safe area. */
+function navCollapsedSnapHeight(bottomPad: number): number {
+  return 10 + NAV_HEADER_BLOCK_HEIGHT + bottomPad;
 }
 
 function formatDistanceUa(meters: number): string {
@@ -92,6 +90,7 @@ function formatDurationUa(seconds: number): string {
 export default function LocationMapPreviewSheet({
   locationId,
   userLocation,
+  hasArrived,
   routeCameraImmersive,
   onToggleRouteCameraImmersive,
   onRouteNavigationBack,
@@ -103,17 +102,17 @@ export default function LocationMapPreviewSheet({
 
   const insets = useSafeAreaInsets();
   const sheetRef = useRef<ComponentRef<typeof BottomSheet>>(null);
-  const [sheetIndex, setSheetIndex] = useState(-1);
+  const [previewSheetIndex, setPreviewSheetIndex] = useState(-1);
+  const [navSheetIndex, setNavSheetIndex] = useState(NAV_SHEET_EXPANDED_INDEX);
   const [detail, setDetail] = useState<LocationDetailDto | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
   const [detailError, setDetailError] = useState<string | null>(null);
   const [navLoading, setNavLoading] = useState(false);
-  const lastRouteRefreshAnchorRef = useRef<{
-    latitude: number;
-    longitude: number;
-  } | null>(null);
-  const routeRefreshInFlightRef = useRef(false);
   const navTransitionRef = useRef(false);
+  /** Користувач сам згорнув navsheet (інакше при відкритті тримаємо розгорнутим). */
+  const userCollapsedNavRef = useRef(false);
+  /** Ігноруємо початковий onChange(-1) при монтуванні з index 0. */
+  const sheetReadyRef = useRef(false);
 
   const sheetLoc = detail;
 
@@ -125,6 +124,15 @@ export default function LocationMapPreviewSheet({
   const objectCount = sheetLoc?.objects?.length ?? 0;
 
   const isNavPanel = Boolean(locationId && routeFeature);
+
+  const scrollBottomPad = Math.max(insets.bottom, 12);
+
+  const snapPoints = useMemo((): (string | number)[] => {
+    if (isNavPanel) {
+      return [navCollapsedSnapHeight(scrollBottomPad), SHEET_SNAP_COMPACT];
+    }
+    return PREVIEW_SNAP_POINTS;
+  }, [isNavPanel, scrollBottomPad]);
 
   useEffect(() => {
     if (!locationId) {
@@ -161,86 +169,93 @@ export default function LocationMapPreviewSheet({
     };
   }, [locationId]);
 
-  useEffect(() => {
-    if (locationId) {
-      setSheetIndex(0);
-    } else {
-      setSheetIndex(-1);
+  useLayoutEffect(() => {
+    if (!locationId) {
+      sheetReadyRef.current = false;
+      setPreviewSheetIndex(-1);
+      setNavSheetIndex(NAV_SHEET_COLLAPSED_INDEX);
+      sheetRef.current?.close();
+      return;
     }
-  }, [locationId]);
 
-  useEffect(() => {
-    if (!isNavPanel) return;
     navTransitionRef.current = true;
-    setSheetIndex(0);
+    sheetReadyRef.current = false;
+    userCollapsedNavRef.current = false;
+
+    const targetIndex = isNavPanel ? NAV_SHEET_EXPANDED_INDEX : 0;
+    if (isNavPanel) {
+      setNavSheetIndex(NAV_SHEET_EXPANDED_INDEX);
+    } else {
+      setPreviewSheetIndex(0);
+    }
+
+    let frame = 0;
+    let attempts = 0;
+    const trySnap = () => {
+      if (sheetRef.current) {
+        sheetRef.current.snapToIndex(targetIndex);
+        sheetReadyRef.current = true;
+        return;
+      }
+      if (attempts++ < 12) {
+        frame = requestAnimationFrame(trySnap);
+      } else {
+        sheetReadyRef.current = true;
+      }
+    };
+    frame = requestAnimationFrame(trySnap);
+
     const t = setTimeout(() => {
       navTransitionRef.current = false;
-    }, 500);
-    return () => clearTimeout(t);
-  }, [isNavPanel]);
-
-  useEffect(() => {
-    if (!isNavPanel || !detail) {
-      lastRouteRefreshAnchorRef.current = null;
-      return;
-    }
-
-    if (!Number.isFinite(detail.lat) || !Number.isFinite(detail.lng)) {
-      return;
-    }
-
-    const lat = userLocation.coords.latitude;
-    const lng = userLocation.coords.longitude;
-
-    if (lastRouteRefreshAnchorRef.current == null) {
-      lastRouteRefreshAnchorRef.current = { latitude: lat, longitude: lng };
-      return;
-    }
-
-    const anchor = lastRouteRefreshAnchorRef.current;
-    const moved = distanceMetersOnEarth(
-      anchor.latitude,
-      anchor.longitude,
-      lat,
-      lng,
-    );
-
-    if (moved < ROUTE_REFRESH_EVERY_METERS || routeRefreshInFlightRef.current) {
-      return;
-    }
-
-    routeRefreshInFlightRef.current = true;
-    void (async () => {
-      try {
-        const { coordinates, summary } = await fetchNavigationRoute({
-          startLng: lng,
-          startLat: lat,
-          endLng: detail.lng,
-          endLat: detail.lat,
-        });
-        setRouteCoords(coordinates, summary);
-        lastRouteRefreshAnchorRef.current = { latitude: lat, longitude: lng };
-      } catch (e) {
-        log.warn("[UniMap] route refresh on move failed", e);
-      } finally {
-        routeRefreshInFlightRef.current = false;
-      }
-    })();
-  }, [isNavPanel, detail, userLocation, setRouteCoords]);
+    }, 480);
+    return () => {
+      cancelAnimationFrame(frame);
+      clearTimeout(t);
+    };
+  }, [locationId, isNavPanel]);
 
   const handleSheetChange = useCallback(
     (index: number) => {
-      setSheetIndex(index);
-      if (index === -1 && !navTransitionRef.current) {
+      if (
+        isNavPanel &&
+        index === NAV_SHEET_COLLAPSED_INDEX &&
+        !navTransitionRef.current
+      ) {
+        userCollapsedNavRef.current = true;
+      } else if (isNavPanel && index >= NAV_SHEET_EXPANDED_INDEX) {
+        userCollapsedNavRef.current = false;
+      }
+
+      if (isNavPanel) {
+        setNavSheetIndex(index);
+      } else {
+        setPreviewSheetIndex(index);
+      }
+      if (
+        navTransitionRef.current &&
+        isNavPanel &&
+        index < NAV_SHEET_EXPANDED_INDEX
+      ) {
+        requestAnimationFrame(() => {
+          sheetRef.current?.snapToIndex(NAV_SHEET_EXPANDED_INDEX);
+        });
+        return;
+      }
+      if (
+        index === -1 &&
+        !navTransitionRef.current &&
+        sheetReadyRef.current
+      ) {
         onDismiss();
       }
     },
-    [onDismiss],
+    [isNavPanel, onDismiss],
   );
 
   const expandSheet = useCallback(() => {
     if (isNavPanel) return;
-    setSheetIndex(1);
+    setPreviewSheetIndex(1);
+    sheetRef.current?.snapToIndex(1);
   }, [isNavPanel]);
 
   const startNavigation = useCallback(() => {
@@ -262,10 +277,6 @@ export default function LocationMapPreviewSheet({
         });
         navTransitionRef.current = true;
         setRouteCoords(coordinates, summary);
-        setSheetIndex(0);
-        setTimeout(() => {
-          navTransitionRef.current = false;
-        }, 500);
       } catch (e) {
         const msg =
           e instanceof Error ? e.message : "Не вдалося побудувати маршрут.";
@@ -276,14 +287,12 @@ export default function LocationMapPreviewSheet({
     })();
   }, [detail, setRouteCoords, userLocation]);
 
-  const scrollBottomPad = Math.max(insets.bottom, 12);
-
   const renderBackdrop = useCallback(
     (props: React.ComponentProps<typeof BottomSheetBackdrop>) => (
       <BottomSheetBackdrop
         {...props}
-        disappearsOnIndex={0}
-        appearsOnIndex={1}
+        disappearsOnIndex={isNavPanel ? NAV_SHEET_COLLAPSED_INDEX : 0}
+        appearsOnIndex={isNavPanel ? NAV_SHEET_EXPANDED_INDEX : 1}
         opacity={isNavPanel ? 0 : 0.42}
         pressBehavior={isNavPanel ? "none" : "collapse"}
         enableTouchThrough={isNavPanel}
@@ -294,30 +303,82 @@ export default function LocationMapPreviewSheet({
 
   const navStats: NavigationRouteSummary | null = routeSummary;
 
+  /** Висота блоку під шапкою в розгорнутому navsheet (40% екрана). */
+  const navExpandedBodyMinHeight = useMemo(() => {
+    const sheetH = Dimensions.get("window").height * 0.4;
+    return Math.max(
+      120,
+      sheetH -
+        NAV_SHEET_HANDLE_HEIGHT -
+        NAV_HEADER_BLOCK_HEIGHT -
+        NAV_HEADER_MARGIN_BOTTOM -
+        scrollBottomPad -
+        24,
+    );
+  }, [scrollBottomPad]);
+
+  if (!locationId) {
+    return null;
+  }
+
+  const sheetModeKey = isNavPanel ? "nav" : "preview";
+  const bottomSheetIndex = isNavPanel
+    ? navSheetIndex < 0
+      ? NAV_SHEET_EXPANDED_INDEX
+      : !userCollapsedNavRef.current &&
+          navSheetIndex < NAV_SHEET_EXPANDED_INDEX
+        ? NAV_SHEET_EXPANDED_INDEX
+        : navSheetIndex
+    : previewSheetIndex < 0
+      ? 0
+      : previewSheetIndex;
+
   return (
     <BottomSheet
+      key={sheetModeKey}
       ref={sheetRef}
-      index={sheetIndex}
-      snapPoints={SNAP_POINTS}
+      index={bottomSheetIndex}
+      snapPoints={snapPoints}
       enableDynamicSizing={false}
       enablePanDownToClose={!isNavPanel}
+      enableOverDrag={false}
+      animateOnMount={false}
       bottomInset={0}
       onChange={handleSheetChange}
       backdropComponent={renderBackdrop}
       backgroundStyle={styles.sheetBackground}
       handleIndicatorStyle={styles.handleIndicator}
     >
-      <BottomSheetScrollView
-        scrollEnabled={!isNavPanel}
-        contentContainerStyle={[
-          isNavPanel ? styles.navScrollInner : styles.scrollInner,
-          { paddingBottom: scrollBottomPad + (isNavPanel ? 6 : 20) },
-        ]}
-        keyboardShouldPersistTaps="handled"
-      >
-        {isNavPanel ? (
-          <>
-            <View style={styles.navHeader}>
+      {isNavPanel ? (
+        <BottomSheetView
+          style={[
+            styles.navScrollInner,
+            bottomSheetIndex >= NAV_SHEET_EXPANDED_INDEX && {
+              paddingBottom: scrollBottomPad + 6,
+              minHeight:
+                NAV_SHEET_HANDLE_HEIGHT +
+                NAV_HEADER_BLOCK_HEIGHT +
+                NAV_HEADER_MARGIN_BOTTOM +
+                navExpandedBodyMinHeight +
+                scrollBottomPad +
+                6,
+            },
+          ]}
+        >
+          <View
+            style={[
+              styles.navPanelRoot,
+              bottomSheetIndex >= NAV_SHEET_EXPANDED_INDEX &&
+                styles.navPanelRootExpanded,
+            ]}
+          >
+            <View
+              style={[
+                styles.navHeader,
+                bottomSheetIndex >= NAV_SHEET_EXPANDED_INDEX &&
+                  styles.navHeaderExpanded,
+              ]}
+            >
               <Pressable
                 accessibilityRole="button"
                 accessibilityLabel="Назад до картки локації"
@@ -334,9 +395,19 @@ export default function LocationMapPreviewSheet({
                   color={globalColors.title}
                 />
               </Pressable>
-              <Text style={styles.navHeaderTitle} numberOfLines={1}>
-                {sheetLoc ? sheetTitle : "Пункт призначення"}
-              </Text>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityHint="Розгорнути панель маршруту"
+                style={styles.navHeaderTitleTap}
+                onPress={() => {
+                  setNavSheetIndex(NAV_SHEET_EXPANDED_INDEX);
+                  sheetRef.current?.snapToIndex(NAV_SHEET_EXPANDED_INDEX);
+                }}
+              >
+                <Text style={styles.navHeaderTitle} numberOfLines={1}>
+                  {sheetLoc ? sheetTitle : "Пункт призначення"}
+                </Text>
+              </Pressable>
               <Pressable
                 accessibilityRole="button"
                 accessibilityLabel={
@@ -360,33 +431,77 @@ export default function LocationMapPreviewSheet({
               </Pressable>
             </View>
 
-            <View style={styles.navStatsRow}>
-              <View style={styles.navStatBox}>
-                <Ionicons
-                  name="analytics-outline"
-                  size={20}
-                  color={globalColors.icon}
-                />
-                <Text style={styles.navStatValue}>
-                  {formatDistanceUa(navStats?.distanceMeters ?? NaN)}
-                </Text>
-                <Text style={styles.navStatHint}>відстань</Text>
-              </View>
-              <View style={styles.navStatDivider} />
-              <View style={styles.navStatBox}>
-                <Ionicons
-                  name="time-outline"
-                  size={20}
-                  color={globalColors.icon}
-                />
-                <Text style={styles.navStatValue}>
-                  {formatDurationUa(navStats?.durationSeconds ?? NaN)}
-                </Text>
-                <Text style={styles.navStatHint}>пішки, орієнтовно</Text>
-              </View>
-            </View>
-          </>
-        ) : (
+            {bottomSheetIndex >= NAV_SHEET_EXPANDED_INDEX ? (
+              hasArrived ? (
+                <View
+                  style={[
+                    styles.navBody,
+                    { minHeight: navExpandedBodyMinHeight },
+                  ]}
+                >
+                  <View style={styles.navArrivedContent}>
+                    <Ionicons
+                      name="checkmark-circle"
+                      size={48}
+                      color={globalColors.accent}
+                    />
+                    <Text style={styles.navArrivedTitle}>
+                      Ви прибули до місця
+                    </Text>
+                    <Text style={styles.navArrivedHint} numberOfLines={2}>
+                      {sheetLoc ? sheetTitle : "Пункт призначення"}
+                    </Text>
+                  </View>
+                </View>
+              ) : (
+                <View
+                  style={[
+                    styles.navBody,
+                    { minHeight: navExpandedBodyMinHeight },
+                  ]}
+                >
+                  <View style={styles.navStatRow}>
+                    <View style={styles.navStatRowLead}>
+                      <Ionicons
+                        name="navigate-outline"
+                        size={20}
+                        color={globalColors.icon}
+                      />
+                      <Text style={styles.navStatRowLabel}>Відстань</Text>
+                    </View>
+                    <Text style={styles.navStatRowValue}>
+                      {formatDistanceUa(navStats?.distanceMeters ?? NaN)}
+                    </Text>
+                  </View>
+                  <View style={styles.navStatRowLine} />
+                  <View style={styles.navStatRow}>
+                    <View style={styles.navStatRowLead}>
+                      <Ionicons
+                        name="time-outline"
+                        size={20}
+                        color={globalColors.icon}
+                      />
+                      <Text style={styles.navStatRowLabel}>
+                        Час пішки, орієнтовно
+                      </Text>
+                    </View>
+                    <Text style={styles.navStatRowValue}>
+                      {formatDurationUa(navStats?.durationSeconds ?? NaN)}
+                    </Text>
+                  </View>
+                </View>
+              )
+            ) : null}
+          </View>
+        </BottomSheetView>
+      ) : (
+        <BottomSheetScrollView
+          contentContainerStyle={[
+            styles.scrollInner,
+            { paddingBottom: scrollBottomPad + 20 },
+          ]}
+          keyboardShouldPersistTaps="handled"
+        >
           <View style={styles.sheetMain}>
             <View style={styles.toolbarWrap}>
               <View style={styles.toolbar}>
@@ -447,8 +562,8 @@ export default function LocationMapPreviewSheet({
               ) : null}
             </View>
           </View>
-        )}
-      </BottomSheetScrollView>
+        </BottomSheetScrollView>
+      )}
     </BottomSheet>
   );
 }
@@ -477,13 +592,23 @@ const styles = StyleSheet.create({
   },
   navScrollInner: {
     paddingHorizontal: 16,
-    paddingTop: 2,
+    paddingTop: 0,
+  },
+  navPanelRoot: {
+    width: "100%",
+  },
+  navPanelRootExpanded: {
+    flex: 1,
   },
   navHeader: {
     flexDirection: "row",
     alignItems: "center",
-    marginBottom: 12,
-    minHeight: 44,
+    marginBottom: 0,
+    minHeight: NAV_HEADER_BLOCK_HEIGHT,
+    paddingVertical: 2,
+  },
+  navHeaderExpanded: {
+    marginBottom: NAV_HEADER_MARGIN_BOTTOM,
   },
   navHeaderSide: {
     width: 44,
@@ -498,42 +623,74 @@ const styles = StyleSheet.create({
   navHeaderPressed: {
     opacity: 0.75,
   },
-  navHeaderTitle: {
+  navHeaderTitleTap: {
     flex: 1,
+    justifyContent: "center",
+    paddingHorizontal: 6,
+  },
+  navHeaderTitle: {
     textAlign: "center",
     fontSize: 16,
     fontWeight: "600",
     color: globalColors.title,
-    paddingHorizontal: 6,
   },
-  navStatsRow: {
-    flexDirection: "row",
-    alignItems: "stretch",
+  navBody: {
+    flex: 1,
+    justifyContent: "space-evenly",
     backgroundColor: globalColors.background,
     borderRadius: 14,
     borderWidth: 1,
     borderColor: globalColors.border,
-    paddingVertical: 14,
+    paddingHorizontal: 18,
+    paddingVertical: 12,
   },
-  navStatBox: {
-    flex: 1,
+  navStatRow: {
+    flexDirection: "row",
     alignItems: "center",
-    paddingHorizontal: 8,
-    gap: 4,
+    justifyContent: "space-between",
+    gap: 12,
+    minHeight: 52,
   },
-  navStatDivider: {
-    width: 1,
-    backgroundColor: globalColors.border,
-    marginVertical: 4,
+  navStatRowLead: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
   },
-  navStatValue: {
-    fontSize: 20,
+  navStatRowLabel: {
+    flex: 1,
+    fontSize: 15,
+    lineHeight: 20,
+    color: globalColors.subtitle,
+  },
+  navStatRowValue: {
+    fontSize: 22,
     fontWeight: "700",
     color: globalColors.title,
+    letterSpacing: -0.3,
     fontVariant: ["tabular-nums"],
   },
-  navStatHint: {
-    fontSize: 12,
+  navStatRowLine: {
+    height: 1,
+    backgroundColor: globalColors.border,
+  },
+  navArrivedContent: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 20,
+    gap: 10,
+  },
+  navArrivedTitle: {
+    fontSize: 22,
+    fontWeight: "700",
+    color: globalColors.title,
+    textAlign: "center",
+    letterSpacing: -0.3,
+  },
+  navArrivedHint: {
+    fontSize: 15,
+    lineHeight: 22,
     color: globalColors.subtitle,
     textAlign: "center",
   },

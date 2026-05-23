@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "dgSpecHash": "RUi3Mia8X0k=",
+  "dgSpecHash": "6UCaTMwD6bw=",
   "success": true,
   "projectFilePath": "/Users/user/unimap/apps/server/infrastructure/infrastructure.csproj",
   "expectedPackageFiles": [
@@ -36,7 +36,9 @@
     "/Users/user/.nuget/packages/pipelines.sockets.unofficial/2.2.8/pipelines.sockets.unofficial.2.2.8.nupkg.sha512",
     "/Users/user/.nuget/packages/stackexchange.redis/2.8.37/stackexchange.redis.2.8.37.nupkg.sha512",
     "/Users/user/.nuget/packages/system.identitymodel.tokens.jwt/8.9.0/system.identitymodel.tokens.jwt.8.9.0.nupkg.sha512",
-    "/Users/user/.nuget/packages/system.io.pipelines/5.0.1/system.io.pipelines.5.0.1.nupkg.sha512"
+    "/Users/user/.nuget/packages/system.io.pipelines/5.0.1/system.io.pipelines.5.0.1.nupkg.sha512",
+    "/Users/user/.nuget/packages/microsoft.netcore.app.ref/9.0.16/microsoft.netcore.app.ref.9.0.16.nupkg.sha512",
+    "/Users/user/.nuget/packages/microsoft.aspnetcore.app.ref/9.0.16/microsoft.aspnetcore.app.ref.9.0.16.nupkg.sha512"
   ],
   "logs": []
 }

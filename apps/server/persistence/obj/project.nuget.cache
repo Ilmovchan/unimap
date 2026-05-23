@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "dgSpecHash": "6S7gRD+ogCc=",
+  "dgSpecHash": "oWiNS0sDc1I=",
   "success": true,
   "projectFilePath": "/Users/user/unimap/apps/server/persistence/persistence.csproj",
   "expectedPackageFiles": [
@@ -44,7 +44,9 @@
     "/Users/user/.nuget/packages/system.reflection.metadata/7.0.0/system.reflection.metadata.7.0.0.nupkg.sha512",
     "/Users/user/.nuget/packages/system.runtime.compilerservices.unsafe/6.0.0/system.runtime.compilerservices.unsafe.6.0.0.nupkg.sha512",
     "/Users/user/.nuget/packages/system.text.json/9.0.6/system.text.json.9.0.6.nupkg.sha512",
-    "/Users/user/.nuget/packages/system.threading.channels/7.0.0/system.threading.channels.7.0.0.nupkg.sha512"
+    "/Users/user/.nuget/packages/system.threading.channels/7.0.0/system.threading.channels.7.0.0.nupkg.sha512",
+    "/Users/user/.nuget/packages/microsoft.netcore.app.ref/9.0.16/microsoft.netcore.app.ref.9.0.16.nupkg.sha512",
+    "/Users/user/.nuget/packages/microsoft.aspnetcore.app.ref/9.0.16/microsoft.aspnetcore.app.ref.9.0.16.nupkg.sha512"
   ],
   "logs": []
 }

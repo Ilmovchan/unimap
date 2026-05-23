@@ -2,6 +2,7 @@ import {
   formatAddressJsonShortTitle,
   formatAddressJsonUkrLine,
 } from "@/src/features/api/addressJsonDisplay";
+import { rewriteDevServerHost, serverApiBase } from "@/src/config/serverApi";
 import log from "loglevel";
 
 /** Елемент з GET /api/locations/:id — «об’єкт» університету. */
@@ -67,11 +68,6 @@ const CANONICAL_MARKER_KEYS = new Set([
   "default",
   "info",
 ]);
-
-function apiBase(): string {
-  const raw = process.env.EXPO_PUBLIC_UNIMAP_SERVER_API_LINK;
-  return (typeof raw === "string" ? raw.trim() : "").replace(/\/$/, "");
-}
 
 function pickRaw(
   raw: Record<string, unknown>,
@@ -294,7 +290,7 @@ function parseLocationPhotosFromApi(raw: unknown): LocationPhotoDto[] | undefine
     const alt = pickRaw(o, "altUk", "AltUk");
     const altUk =
       alt === undefined || alt === null ? null : String(alt).trim() || null;
-    out.push({ id, url, altUk });
+    out.push({ id, url: rewriteDevServerHost(url) ?? url, altUk });
   }
   return out.length ? out : undefined;
 }
@@ -304,10 +300,11 @@ function resolveMainImageUrl(
   photos: LocationPhotoDto[] | undefined,
 ): string | null {
   const direct = imageUrl?.trim();
-  if (direct) return direct;
+  if (direct) return rewriteDevServerHost(direct);
   if (!photos?.length) return null;
   const first = photos.find((p) => p.url?.trim());
-  return first?.url?.trim() ?? null;
+  const fromPhoto = first?.url?.trim();
+  return fromPhoto ? rewriteDevServerHost(fromPhoto) : null;
 }
 
 function normalizeLocationMap(raw: Record<string, unknown>): LocationMapDto {
@@ -477,7 +474,7 @@ function normalizeLocationMarker(raw: Record<string, unknown>): LocationMarkerDt
 
 /** Легкий список маркерів для ініціалізації карти. */
 export async function fetchLocationMarkers(): Promise<LocationMarkerDto[]> {
-  const base = apiBase();
+  const base = serverApiBase();
   if (!base) {
     log.warn("[UniMap] EXPO_PUBLIC_UNIMAP_SERVER_API_LINK is not set");
     throw new Error("EXPO_PUBLIC_UNIMAP_SERVER_API_LINK is not set");
@@ -501,7 +498,7 @@ export async function fetchLocationMarkers(): Promise<LocationMarkerDto[]> {
 
 /** Повний список локацій для екрану «Усі відділення». */
 export async function fetchLocations(): Promise<LocationMapDto[]> {
-  const base = apiBase();
+  const base = serverApiBase();
   if (!base) {
     log.warn("[UniMap] EXPO_PUBLIC_UNIMAP_SERVER_API_LINK is not set");
     throw new Error("EXPO_PUBLIC_UNIMAP_SERVER_API_LINK is not set");
@@ -527,7 +524,7 @@ export async function fetchLocationById(
   id: string,
   options?: { highlightObjectId?: string },
 ): Promise<LocationDetailDto> {
-  const base = apiBase();
+  const base = serverApiBase();
   if (!base) {
     log.warn("[UniMap] EXPO_PUBLIC_UNIMAP_SERVER_API_LINK is not set");
     throw new Error("EXPO_PUBLIC_UNIMAP_SERVER_API_LINK is not set");

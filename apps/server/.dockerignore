@@ -1,0 +1,6 @@
+**/bin/
+**/obj/
+**/.idea/
+**/*.user
+**/*.DotSettings.user
+**/launchSettings.json

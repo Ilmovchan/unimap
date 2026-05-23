@@ -68,7 +68,6 @@
 /Users/user/unimap/apps/server/api/bin/Debug/net9.0/System.Composition.Hosting.dll
 /Users/user/unimap/apps/server/api/bin/Debug/net9.0/System.Composition.Runtime.dll
 /Users/user/unimap/apps/server/api/bin/Debug/net9.0/System.Composition.TypedParts.dll
-/Users/user/unimap/apps/server/api/bin/Debug/net9.0/System.Text.Json.dll
 /Users/user/unimap/apps/server/api/bin/Debug/net9.0/cs/Microsoft.CodeAnalysis.resources.dll
 /Users/user/unimap/apps/server/api/bin/Debug/net9.0/de/Microsoft.CodeAnalysis.resources.dll
 /Users/user/unimap/apps/server/api/bin/Debug/net9.0/es/Microsoft.CodeAnalysis.resources.dll
@@ -154,3 +153,9 @@
 /Users/user/unimap/apps/server/api/bin/Debug/net9.0/Microsoft.Extensions.Caching.StackExchangeRedis.dll
 /Users/user/unimap/apps/server/api/bin/Debug/net9.0/Pipelines.Sockets.Unofficial.dll
 /Users/user/unimap/apps/server/api/bin/Debug/net9.0/StackExchange.Redis.dll
+/Users/user/unimap/apps/server/api/bin/Debug/net9.0/appsettings.Docker.json
+/Users/user/unimap/apps/server/api/obj/Debug/net9.0/rpswa.dswa.cache.json
+/Users/user/unimap/apps/server/api/obj/Debug/net9.0/rjimswa.dswa.cache.json
+/Users/user/unimap/apps/server/api/obj/Debug/net9.0/rjsmrazor.dswa.cache.json
+/Users/user/unimap/apps/server/api/obj/Debug/net9.0/rjsmcshtml.dswa.cache.json
+/Users/user/unimap/apps/server/api/obj/Debug/net9.0/swae.build.ex.cache

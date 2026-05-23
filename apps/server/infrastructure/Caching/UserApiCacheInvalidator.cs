@@ -5,8 +5,12 @@ namespace infrastructure.Caching;
 
 public sealed class UserApiCacheInvalidator(IUserApiCache cache) : IUserApiCacheInvalidator
 {
-    public Task InvalidateLocationsAsync(CancellationToken cancellationToken = default) =>
-        cache.RemoveByPrefixAsync(UserApiCacheKeys.LocationsPrefix, cancellationToken);
+    public async Task InvalidateLocationsAsync(CancellationToken cancellationToken = default)
+    {
+        await cache.RemoveAsync(UserApiCacheKeys.LocationMarkers(), cancellationToken);
+        await cache.RemoveAsync(UserApiCacheKeys.LocationsList(), cancellationToken);
+        await cache.RemoveByPrefixAsync(UserApiCacheKeys.LocationsPrefix, cancellationToken);
+    }
 
     public Task InvalidateLocationDetailAsync(Guid locationId, CancellationToken cancellationToken = default) =>
         cache.RemoveAsync(UserApiCacheKeys.LocationDetail(locationId), cancellationToken);
