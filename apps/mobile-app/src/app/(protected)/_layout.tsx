@@ -28,6 +28,14 @@ const ProtectedLayout = () => {
         name="news"
         options={{ headerShown: false }}
       />
+      <Stack.Screen
+        name="qr"
+        options={{
+          headerShown: false,
+          presentation: "fullScreenModal",
+          animation: "slide_from_bottom",
+        }}
+      />
     </Stack>
   );
 };

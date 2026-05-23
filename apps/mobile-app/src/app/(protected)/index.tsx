@@ -21,12 +21,16 @@ import type { RouteLineFeature } from "@/src/features/map/mapRouteStore";
 import LayoutButton from "@/src/features/map/components/LayoutButton";
 import MapSearchChrome from "@/src/features/map/components/MapSearchChrome";
 import { MAP_CAMERA_LIMITS_ENABLED } from "@/src/features/map/odesaMapBounds";
+import {
+  getMapFabInsets,
+  mapFabStackBottom,
+} from "@/src/features/map/mapFabLayout";
 import { MAP_SEARCH_UI_ENABLED } from "@/src/features/map/mapSearchConfig";
 import { syncNewsAppBadge } from "@/src/features/news/newsAppBadge";
 import { getUnreadNewsCount } from "@/src/features/news/newsClient";
 import { globalColors } from "@/src/styles/styles";
 import { Ionicons } from "@expo/vector-icons";
-import { useFocusEffect, useNavigation } from "@react-navigation/native";
+import { useFocusEffect } from "@react-navigation/native";
 import { CameraRef } from "@maplibre/maplibre-react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import log from "loglevel";
@@ -50,7 +54,6 @@ export default function MapScreen() {
     focusLocation?: string | string[];
   }>();
   const insets = useSafeAreaInsets();
-  const navigation = useNavigation();
   const cameraRef = useRef<CameraRef | null>(null);
   const location = useLocation().location;
   const [markers, setMarkers] = useState<MapMarkerPoint[]>([]);
@@ -122,23 +125,11 @@ export default function MapScreen() {
 
   useFocusEffect(refreshUnreadNewsCount);
 
-  /** Закриваємо картку при виході з екрана карти (freezeOnBlur може не застосувати setState з кнопок). */
-  useEffect(() => {
-    const unsub = navigation.addListener("blur", () => {
-      setSelectedLocationId(null);
-    });
-    return unsub;
-  }, [navigation]);
-
   const openLocationSheet = useCallback(
     (locationId: string) => {
+      if (selectedLocationId === locationId) return;
       clearRoute();
-      if (selectedLocationId === locationId) {
-        setSelectedLocationId(null);
-        queueMicrotask(() => setSelectedLocationId(locationId));
-      } else {
-        setSelectedLocationId(locationId);
-      }
+      setSelectedLocationId(locationId);
     },
     [clearRoute, selectedLocationId],
   );
@@ -401,9 +392,7 @@ export default function MapScreen() {
 
   if (!location) return null;
 
-  const fabTop = insets.top + 12;
-  const fabBottom = insets.bottom + 24;
-  const fabSide = 20;
+  const fab = getMapFabInsets(insets);
 
   return (
     <View style={{ flex: 1 }}>
@@ -432,11 +421,10 @@ export default function MapScreen() {
 
       {MAP_SEARCH_UI_ENABLED ? (
         <MapSearchChrome
-          top={fabTop}
-          horizontalInset={fabSide}
+          top={fab.top}
+          horizontalInset={fab.right}
           unreadNewsCount={unreadNewsCount}
           onOpenLocations={() => {
-            setSelectedLocationId(null);
             router.push("/locations");
           }}
           onOpenNews={() => {
@@ -447,8 +435,8 @@ export default function MapScreen() {
         <>
           <LayoutButton
             style={{
-              top: fabTop,
-              left: fabSide,
+              top: fab.top,
+              left: fab.left,
               zIndex: 9999,
             }}
             icon={
@@ -459,16 +447,13 @@ export default function MapScreen() {
               />
             }
             accessibilityLabel="Усі відділення"
-            onPress={() => {
-              setSelectedLocationId(null);
-              router.push("/locations");
-            }}
+            onPress={() => router.push("/locations")}
           />
 
           <LayoutButton
             style={{
-              top: fabTop,
-              right: fabSide,
+              top: fab.top,
+              right: fab.right,
               zIndex: 9999,
             }}
             icon={
@@ -493,8 +478,25 @@ export default function MapScreen() {
 
       <LayoutButton
         style={{
-          bottom: fabBottom,
-          right: fabSide,
+          bottom: mapFabStackBottom(fab.bottom, 1),
+          right: fab.right,
+          zIndex: 9999,
+        }}
+        icon={
+          <Ionicons
+            size={26}
+            name="qr-code-outline"
+            color={globalColors.navigationFabIcon}
+          />
+        }
+        accessibilityLabel="Сканувати QR-код"
+        onPress={() => router.push("/qr")}
+      />
+
+      <LayoutButton
+        style={{
+          bottom: fab.bottom,
+          right: fab.right,
           zIndex: 9999,
         }}
         icon={
