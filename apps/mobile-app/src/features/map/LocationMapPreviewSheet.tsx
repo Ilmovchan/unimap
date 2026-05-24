@@ -10,6 +10,7 @@ import {
   LocationDetailSections,
   locationCardTitle,
 } from "@/src/features/locations/LocationDetailContent";
+import LocationDetailSectionsSkeleton from "@/src/features/locations/LocationDetailSectionsSkeleton";
 import { globalColors } from "@/src/styles/styles";
 import { Ionicons } from "@expo/vector-icons";
 import * as Location from "expo-location";
@@ -43,6 +44,7 @@ import { useMapRouteStore } from "./mapRouteStore";
 
 type Props = {
   locationId: string | null;
+  highlightObjectId?: string | null;
   userLocation: Location.LocationObject;
   hasArrived: boolean;
   routeCameraImmersive: boolean;
@@ -89,6 +91,7 @@ function formatDurationUa(seconds: number): string {
 
 export default function LocationMapPreviewSheet({
   locationId,
+  highlightObjectId = null,
   userLocation,
   hasArrived,
   routeCameraImmersive,
@@ -147,7 +150,9 @@ export default function LocationMapPreviewSheet({
     setDetailError(null);
     void (async () => {
       try {
-        const d = await fetchLocationById(locationId);
+        const d = await fetchLocationById(locationId, {
+          highlightObjectId: highlightObjectId ?? undefined,
+        });
         if (!cancelled) setDetail(d);
       } catch (e) {
         if (!cancelled) {
@@ -167,7 +172,7 @@ export default function LocationMapPreviewSheet({
     return () => {
       cancelled = true;
     };
-  }, [locationId]);
+  }, [locationId, highlightObjectId]);
 
   useLayoutEffect(() => {
     if (!locationId) {
@@ -547,18 +552,17 @@ export default function LocationMapPreviewSheet({
             </View>
 
             <View style={styles.sheetBody}>
-              {detailLoading ? (
-                <View style={styles.sheetLoading}>
-                  <ActivityIndicator
-                    size="small"
-                    color={globalColors.accent}
-                  />
-                  <Text style={styles.sheetLoadingText}>Завантаження…</Text>
-                </View>
-              ) : detailError ? (
+              {detailError ? (
                 <Text style={styles.sheetError}>{detailError}</Text>
-              ) : detail ? (
-                <LocationDetailSections location={detail} showHeadline={false} />
+              ) : null}
+              {detail ? (
+                <LocationDetailSections
+                  location={detail}
+                  showHeadline={false}
+                  loadPhotosImmediately
+                />
+              ) : detailLoading ? (
+                <LocationDetailSectionsSkeleton />
               ) : null}
             </View>
           </View>

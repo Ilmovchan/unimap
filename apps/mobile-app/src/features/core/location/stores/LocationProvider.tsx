@@ -102,6 +102,18 @@ export const LocationProvider = ({ children }: PropsWithChildren) => {
         };
       }
 
+      void Location.getCurrentPositionAsync({
+        accuracy: Location.Accuracy.Balanced,
+      })
+        .then((pos) => {
+          setLocation(pos);
+          logAnchorRef.current = {
+            lat: pos.coords.latitude,
+            lng: pos.coords.longitude,
+          };
+        })
+        .catch(() => {});
+
       sub = await Location.watchPositionAsync(
         {
           accuracy: Location.Accuracy.Highest,

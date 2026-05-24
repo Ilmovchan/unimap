@@ -15,8 +15,9 @@ import {
 } from "@maplibre/maplibre-react-native";
 import * as Location from "expo-location";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { View } from "react-native";
-import { mapStyleUrl } from "@/src/features/api/mapClient";
+import { ActivityIndicator, StyleSheet, Text, View } from "react-native";
+import { fetchMapStyle, mapStyleUrl, type MapStyleSpec } from "@/src/features/api/mapClient";
+import log from "loglevel";
 import { resolveMarkerKeyForMap } from "@/src/features/api/locationsClient";
 import type { RouteLineFeature } from "./mapRouteStore";
 import {
@@ -30,6 +31,12 @@ import {
   focusCameraLikeNavigateButton,
   focusCameraToFitBounds,
 } from "./navigateCamera";
+import {
+  MAP_CLUSTER_MAX_ZOOM_LEVEL,
+  MAP_CLUSTER_MIN_POINTS,
+  MAP_CLUSTER_RADIUS,
+  MAP_CLUSTER_SOURCE_MAX_ZOOM_LEVEL,
+} from "./mapClusterConfig";
 import {
   MAP_CAMERA_LIMITS_ENABLED,
   MAP_MAX_ZOOM_LEVEL,
@@ -160,28 +167,24 @@ type Props = {
   location: Location.LocationObject;
   markers: MapMarkerPoint[];
   cameraRef: React.RefObject<CameraRef | null>;
-  followUserLocation?: boolean;
-  onStopFollowingUser?: () => void;
   onMarkerPress?: (id: string) => void;
   routeFeature?: RouteLineFeature | null;
   selectedLocationId?: string | null;
+  /** Викликається, коли JSON стилю завантажено (до повного рендеру тайлів). */
+  onMapStyleReady?: () => void;
 };
 
 const Map = ({
   location,
   markers,
   cameraRef,
-  followUserLocation = false,
-  onStopFollowingUser,
   onMarkerPress,
   routeFeature = null,
   selectedLocationId = null,
+  onMapStyleReady,
 }: Props) => {
-  const apiUrl = useMemo(() => mapStyleUrl(), []);
-  /** MapLibre застосовує maxBounds лише коли followUserLocation === false. */
-  const [cameraFollowEnabled, setCameraFollowEnabled] = useState(false);
-  const followUserRef = useRef(followUserLocation);
-  followUserRef.current = followUserLocation;
+  const [mapStyle, setMapStyle] = useState<MapStyleSpec | null>(null);
+  const [mapStyleError, setMapStyleError] = useState<string | null>(null);
   const shapeSourceRef = useRef<ShapeSourceRef>(null);
   const selectedScaleRef = useRef(1);
   const [selectedScale, setSelectedScale] = useState(1);
@@ -191,26 +194,36 @@ const Map = ({
     string | null
   >(null);
 
-  const applyNativeMapBounds = useCallback(() => {
-    setCameraFollowEnabled(false);
-    requestAnimationFrame(() => {
-      requestAnimationFrame(() => {
-        setCameraFollowEnabled(followUserRef.current);
-      });
-    });
-  }, []);
-
   useEffect(() => {
-    applyNativeMapBounds();
-  }, [applyNativeMapBounds]);
+    let cancelled = false;
+    setMapStyle(null);
+    setMapStyleError(null);
 
-  useEffect(() => {
-    setCameraFollowEnabled(followUserLocation);
-  }, [followUserLocation]);
+    void (async () => {
+      try {
+        const style = await fetchMapStyle();
+        if (!cancelled) {
+          setMapStyle(style);
+          onMapStyleReady?.();
+        }
+      } catch (e) {
+        if (!cancelled) {
+          const base =
+            e instanceof Error && e.message.includes("Network request failed")
+              ? `Перевірте, що API запущено (${mapStyleUrl()}).`
+              : e instanceof Error
+                ? e.message
+                : "Не вдалося завантажити карту.";
+          setMapStyleError(base);
+          log.warn("[UniMap] map style load failed", e);
+        }
+      }
+    })();
 
-  const handleMapStyleLoaded = useCallback(() => {
-    applyNativeMapBounds();
-  }, [applyNativeMapBounds]);
+    return () => {
+      cancelled = true;
+    };
+  }, [onMapStyleReady]);
 
   useEffect(() => {
     let cancelled = false;
@@ -291,18 +304,6 @@ const Map = ({
     [markers, highlightedLocationId],
   );
 
-  /** MapLibre ігнорує setCamera, поки followUserLocation увімкнено — вимикаємо локально до рендеру. */
-  const releaseFollowAndRun = useCallback(
-    (run: () => void) => {
-      setCameraFollowEnabled(false);
-      onStopFollowingUser?.();
-      requestAnimationFrame(() => {
-        requestAnimationFrame(run);
-      });
-    },
-    [onStopFollowingUser],
-  );
-
   const runCameraCommand = useCallback(
     (attempt: number, command: () => void) => {
       if (!cameraRef.current && attempt < 12) {
@@ -327,42 +328,33 @@ const Map = ({
       const id = raw === undefined || raw === null ? "" : String(raw);
 
       if (cluster) {
-        releaseFollowAndRun(() => {
-          runCameraCommand(0, () => {
-            void (async () => {
-              const src = shapeSourceRef.current;
-              if (!src) return;
+        runCameraCommand(0, () => {
+          void (async () => {
+            const src = shapeSourceRef.current;
+            if (!src) return;
 
-              const coords = await collectClusterLeafCoords(src, feature);
-              const box = boundsNeSwFromLngLats(coords);
-              if (!box) return;
+            const coords = await collectClusterLeafCoords(src, feature);
+            const box = boundsNeSwFromLngLats(coords);
+            if (!box) return;
 
-              focusCameraToFitBounds(
-                cameraRef,
-                box.ne,
-                box.sw,
-                CLUSTER_FIT_PADDING,
-              );
-            })();
-          });
+            focusCameraToFitBounds(
+              cameraRef,
+              box.ne,
+              box.sw,
+              CLUSTER_FIT_PADDING,
+            );
+          })();
         });
         return;
       }
 
       if (id) onMarkerPress?.(id);
 
-      releaseFollowAndRun(() => {
-        runCameraCommand(0, () => {
-          focusCameraLikeNavigateButton(cameraRef, lngLat, "tapSingleMarker");
-        });
+      runCameraCommand(0, () => {
+        focusCameraLikeNavigateButton(cameraRef, lngLat, "tapSingleMarker");
       });
     },
-    [
-      cameraRef,
-      onMarkerPress,
-      releaseFollowAndRun,
-      runCameraCommand,
-    ],
+    [cameraRef, onMarkerPress, runCameraCommand],
   );
 
   /** М’яка тінь під кластером — як у FAB. */
@@ -448,17 +440,36 @@ const Map = ({
     };
   }, [routeFeature]);
 
+  if (mapStyleError) {
+    return (
+      <View style={styles.mapState}>
+        <Text style={styles.mapStateTitle}>Карта недоступна</Text>
+        <Text style={styles.mapStateHint}>{mapStyleError}</Text>
+      </View>
+    );
+  }
+
+  if (!mapStyle) {
+    return (
+      <View style={styles.mapState}>
+        <ActivityIndicator size="large" color={globalColors.accent} />
+      </View>
+    );
+  }
+
   return (
     <View style={{ flex: 1 }}>
       <MapView
-        key={apiUrl}
         style={{ flex: 1 }}
-        mapStyle={apiUrl}
+        mapStyle={mapStyle}
+        scrollEnabled
+        zoomEnabled
+        rotateEnabled
+        pitchEnabled
         attributionEnabled={true}
         attributionPosition={{ bottom: 40, left: 25 }}
         compassViewPosition={2}
         compassViewMargins={{ x: 18, y: 80 }}
-        onDidFinishLoadingStyle={handleMapStyleLoaded}
       >
         <UserLocation
           visible={true}
@@ -485,7 +496,7 @@ const Map = ({
                   maxZoomLevel: MAP_MAX_ZOOM_LEVEL,
                 }
               : {})}
-            followUserLocation={cameraFollowEnabled}
+            followUserLocation={false}
             ref={cameraRef}
           />
         )}
@@ -496,9 +507,10 @@ const Map = ({
             id={CLUSTER_SOURCE_ID}
             shape={shape}
             cluster
-            clusterRadius={48}
-            clusterMaxZoomLevel={14}
-            clusterMinPoints={2}
+            clusterRadius={MAP_CLUSTER_RADIUS}
+            clusterMaxZoomLevel={MAP_CLUSTER_MAX_ZOOM_LEVEL}
+            clusterMinPoints={MAP_CLUSTER_MIN_POINTS}
+            maxZoomLevel={MAP_CLUSTER_SOURCE_MAX_ZOOM_LEVEL}
             hitbox={{ width: 48, height: 48 }}
             onPress={handleShapePress}
           >
@@ -672,5 +684,28 @@ const Map = ({
     </View>
   );
 };
+
+const styles = StyleSheet.create({
+  mapState: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 28,
+    backgroundColor: globalColors.background,
+  },
+  mapStateTitle: {
+    fontSize: 17,
+    fontWeight: "600",
+    color: globalColors.title,
+    marginBottom: 8,
+    textAlign: "center",
+  },
+  mapStateHint: {
+    fontSize: 14,
+    color: globalColors.subtitle,
+    textAlign: "center",
+    lineHeight: 20,
+  },
+});
 
 export default Map;

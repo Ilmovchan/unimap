@@ -1,5 +1,6 @@
 import type { LocationPhotoDto } from "@/src/features/api/locationsClient";
 import { globalColors } from "@/src/styles/styles";
+import DeferredExpoImage from "@/src/features/ui/DeferredExpoImage";
 import { Image } from "expo-image";
 import * as Haptics from "expo-haptics";
 import { useCallback, useState } from "react";
@@ -15,9 +16,47 @@ const MAX_VISIBLE = 2;
 type Props = {
   photos: LocationPhotoDto[];
   title: string;
+  /** У bottom sheet — одразу показуємо рамки, фото вантажаться асинхронно. */
+  loadImmediately?: boolean;
 };
 
-export default function LocationPhotoStrip({ photos, title }: Props) {
+function PhotoThumb({
+  uri,
+  loadImmediately,
+}: {
+  uri: string;
+  loadImmediately: boolean;
+}) {
+  if (loadImmediately) {
+    return (
+      <View style={[styles.thumbImage, styles.thumbImagePlaceholder]}>
+        <Image
+          source={{ uri }}
+          style={StyleSheet.absoluteFill}
+          contentFit="cover"
+          transition={120}
+        />
+      </View>
+    );
+  }
+
+  return (
+    <DeferredExpoImage
+      source={{ uri }}
+      style={styles.thumbImage}
+      contentFit="cover"
+      transition={120}
+      deferMs={200}
+      placeholderStyle={styles.thumbImagePlaceholder}
+    />
+  );
+}
+
+export default function LocationPhotoStrip({
+  photos,
+  title,
+  loadImmediately = false,
+}: Props) {
   const [viewerIndex, setViewerIndex] = useState<number | null>(null);
 
   const openViewer = useCallback((index: number) => {
@@ -58,12 +97,7 @@ export default function LocationPhotoStrip({ photos, title }: Props) {
                   pressed && styles.cellPressed,
                 ]}
               >
-                <Image
-                  source={{ uri: photo.url }}
-                  style={styles.thumbImage}
-                  contentFit="cover"
-                  transition={120}
-                />
+                <PhotoThumb uri={photo.url} loadImmediately={loadImmediately} />
                 {showMoreOverlay ? (
                   <View style={styles.moreOverlay}>
                     <Text style={styles.moreOverlayText}>+{extraCount}</Text>
@@ -118,6 +152,9 @@ const styles = StyleSheet.create({
   thumbImage: {
     width: "100%",
     height: "100%",
+  },
+  thumbImagePlaceholder: {
+    backgroundColor: globalColors.background,
   },
   moreOverlay: {
     ...StyleSheet.absoluteFillObject,

@@ -25,6 +25,8 @@ import { sortUniversityObjectsForDisplay } from "./universityObjectSort";
 type Props = {
   location: LocationDetailDto;
   showHeadline?: boolean;
+  /** У bottom sheet — текст одразу, фото підвантажуються окремо. */
+  loadPhotosImmediately?: boolean;
 };
 
 function formatObjectsList(loc: LocationDetailDto): LocationUniversityObjectDto[] {
@@ -63,6 +65,7 @@ export function locationAddressText(location: LocationDetailDto): string | null 
 export function LocationDetailSections({
   location,
   showHeadline = true,
+  loadPhotosImmediately = false,
 }: Props) {
   const addressText = locationAddressText(location);
   const headline = locationCardTitle(location);
@@ -132,7 +135,11 @@ export function LocationDetailSections({
       ) : null}
 
       {photos.length > 0 ? (
-        <LocationPhotoStrip photos={photos} title={headline} />
+        <LocationPhotoStrip
+          photos={photos}
+          title={headline}
+          loadImmediately={loadPhotosImmediately}
+        />
       ) : null}
 
       {objectsCard}

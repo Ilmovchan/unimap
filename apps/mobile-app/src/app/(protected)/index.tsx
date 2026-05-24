@@ -1,5 +1,6 @@
 import { fetchLocationMarkers } from "@/src/features/api/locationsClient";
 import { useLocation } from "@/src/features/core/location/stores/LocationProvider";
+import { createFallbackMapLocation } from "@/src/features/map/defaultMapLocation";
 import * as Haptics from "expo-haptics";
 import Map, {
   bearingDegreesLngLat,
@@ -20,7 +21,6 @@ import { trimRouteCoordinatesAheadOfUser } from "@/src/features/map/trimRouteAhe
 import type { RouteLineFeature } from "@/src/features/map/mapRouteStore";
 import LayoutButton from "@/src/features/map/components/LayoutButton";
 import MapSearchChrome from "@/src/features/map/components/MapSearchChrome";
-import { MAP_CAMERA_LIMITS_ENABLED } from "@/src/features/map/odesaMapBounds";
 import {
   getMapFabInsets,
   mapFabStackBottom,
@@ -50,23 +50,24 @@ function focusLocationParam(
 
 export default function MapScreen() {
   const router = useRouter();
-  const { focusLocation: focusLocationRaw } = useLocalSearchParams<{
+  const {
+    focusLocation: focusLocationRaw,
+    highlightObjectId: highlightObjectIdRaw,
+  } = useLocalSearchParams<{
     focusLocation?: string | string[];
+    highlightObjectId?: string | string[];
   }>();
   const insets = useSafeAreaInsets();
   const cameraRef = useRef<CameraRef | null>(null);
   const location = useLocation().location;
   const [markers, setMarkers] = useState<MapMarkerPoint[]>([]);
+  const [markersLoadEnabled, setMarkersLoadEnabled] = useState(false);
   const [selectedLocationId, setSelectedLocationId] = useState<string | null>(
     null,
   );
-  const [cameraFollowUser, setCameraFollowUser] = useState(false);
-
-  useEffect(() => {
-    if (MAP_CAMERA_LIMITS_ENABLED) {
-      setCameraFollowUser(true);
-    }
-  }, []);
+  const [highlightObjectId, setHighlightObjectId] = useState<string | null>(
+    null,
+  );
   const routeFeature = useMapRouteStore((s) => s.routeFeature);
   const clearRoute = useMapRouteStore((s) => s.clearRoute);
   const [routeCameraImmersive, setRouteCameraImmersive] = useState(false);
@@ -80,6 +81,8 @@ export default function MapScreen() {
   const immersiveEnterAnimatingRef = useRef(false);
 
   useEffect(() => {
+    if (!markersLoadEnabled) return;
+
     let cancelled = false;
     (async () => {
       try {
@@ -109,18 +112,27 @@ export default function MapScreen() {
     return () => {
       cancelled = true;
     };
+  }, [markersLoadEnabled]);
+
+  const handleMapStyleReady = useCallback(() => {
+    InteractionManager.runAfterInteractions(() => {
+      setMarkersLoadEnabled(true);
+    });
   }, []);
 
   const refreshUnreadNewsCount = useCallback(() => {
-    void (async () => {
-      try {
-        const count = await getUnreadNewsCount();
-        setUnreadNewsCount(count);
-        await syncNewsAppBadge(count);
-      } catch (e) {
-        log.warn("[UniMap] unread news count failed", e);
-      }
-    })();
+    const task = InteractionManager.runAfterInteractions(() => {
+      void (async () => {
+        try {
+          const count = await getUnreadNewsCount();
+          setUnreadNewsCount(count);
+          await syncNewsAppBadge(count);
+        } catch (e) {
+          log.warn("[UniMap] unread news count failed", e);
+        }
+      })();
+    });
+    return () => task.cancel();
   }, []);
 
   useFocusEffect(refreshUnreadNewsCount);
@@ -129,6 +141,7 @@ export default function MapScreen() {
     (locationId: string) => {
       if (selectedLocationId === locationId) return;
       clearRoute();
+      setHighlightObjectId(null);
       setSelectedLocationId(locationId);
     },
     [clearRoute, selectedLocationId],
@@ -145,12 +158,16 @@ export default function MapScreen() {
 
     const lng = loc.lng;
     const lat = loc.lat;
+    const objectHighlight = focusLocationParam(highlightObjectIdRaw);
 
     clearRoute();
     setRouteCameraImmersive(false);
     setSelectedLocationId(focusId);
-    setCameraFollowUser(false);
-    router.setParams({ focusLocation: undefined });
+    setHighlightObjectId(objectHighlight ?? null);
+    router.setParams({
+      focusLocation: undefined,
+      highlightObjectId: undefined,
+    });
 
     const runFocus = (attempt: number) => {
       InteractionManager.runAfterInteractions(() => {
@@ -167,7 +184,13 @@ export default function MapScreen() {
     };
 
     setTimeout(() => runFocus(0), 0);
-  }, [focusLocationRaw, markers, clearRoute, router]);
+  }, [
+    focusLocationRaw,
+    highlightObjectIdRaw,
+    markers,
+    clearRoute,
+    router,
+  ]);
 
   useEffect(() => {
     const coords = routeFeature?.geometry?.coordinates;
@@ -203,7 +226,6 @@ export default function MapScreen() {
       immersiveToggled && !routeCameraImmersive;
 
     if (routeCameraImmersive) {
-      setCameraFollowUser(false);
       immersiveEnterAnimatingRef.current = true;
       focusCameraRouteFirstPerson(cameraRef, userLngLat, path);
       setTimeout(() => {
@@ -211,7 +233,6 @@ export default function MapScreen() {
       }, MARKER_FOCUS_ANIMATION_DURATION_MS + 80);
     } else {
       immersiveEnterAnimatingRef.current = false;
-      setCameraFollowUser(false);
       if (returningFromImmersive) {
         focusCameraToRoutePathAfterImmersive(cameraRef, path);
       } else {
@@ -229,7 +250,6 @@ export default function MapScreen() {
     setRouteCameraImmersive(false);
 
     if (!loc || !Number.isFinite(loc.lat) || !Number.isFinite(loc.lng)) {
-      setCameraFollowUser(true);
       const cur = locationRef.current;
       if (cur) {
         focusCameraLikeNavigateButton(
@@ -241,7 +261,6 @@ export default function MapScreen() {
       return;
     }
 
-    setCameraFollowUser(false);
     const lng = loc.lng;
     const lat = loc.lat;
 
@@ -266,17 +285,9 @@ export default function MapScreen() {
     if (useMapRouteStore.getState().routeFeature) {
       clearRoute();
       setRouteCameraImmersive(false);
-      setCameraFollowUser(true);
-      const cur = locationRef.current;
-      if (cur) {
-        focusCameraLikeNavigateButton(
-          cameraRef,
-          [cur.coords.longitude, cur.coords.latitude],
-          "followUserLocation",
-        );
-      }
     }
     setSelectedLocationId(null);
+    setHighlightObjectId(null);
   }, [clearRoute]);
 
   const toggleRouteCameraImmersive = useCallback(() => {
@@ -390,27 +401,31 @@ export default function MapScreen() {
     location?.coords.longitude,
   ]);
 
-  if (!location) return null;
+  const mapLocation = location ?? createFallbackMapLocation();
+  const hasGpsLocation = location != null;
 
   const fab = getMapFabInsets(insets);
 
   return (
     <View style={{ flex: 1 }}>
       <Map
-        location={location}
+        location={mapLocation}
         markers={mapMarkers}
         cameraRef={cameraRef}
-        followUserLocation={cameraFollowUser}
-        onStopFollowingUser={() => setCameraFollowUser(false)}
         routeFeature={displayRouteFeature}
         selectedLocationId={selectedLocationId}
         onMarkerPress={openLocationSheet}
+        onMapStyleReady={handleMapStyleReady}
       />
 
-      <View style={styles.sheetLayer} pointerEvents="box-none">
+      <View
+        style={styles.sheetLayer}
+        pointerEvents={selectedLocationId ? "box-none" : "none"}
+      >
         <LocationMapPreviewSheet
           locationId={selectedLocationId}
-          userLocation={location}
+          highlightObjectId={highlightObjectId}
+          userLocation={mapLocation}
           hasArrived={hasArrived}
           routeCameraImmersive={routeCameraImmersive}
           onToggleRouteCameraImmersive={toggleRouteCameraImmersive}
@@ -508,11 +523,12 @@ export default function MapScreen() {
         }
         accessibilityLabel="Показати мене на мапі"
         onPress={() => {
-          setCameraFollowUser(true);
-          focusCameraLikeNavigateButton(cameraRef, [
-            location.coords.longitude,
-            location.coords.latitude,
-          ]);
+          if (!hasGpsLocation) return;
+          focusCameraLikeNavigateButton(
+            cameraRef,
+            [location.coords.longitude, location.coords.latitude],
+            "followUserLocation",
+          );
         }}
       />
     </View>

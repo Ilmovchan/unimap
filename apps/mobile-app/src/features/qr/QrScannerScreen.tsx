@@ -1,7 +1,8 @@
 import { globalColors } from "@/src/styles/styles";
 import { Ionicons } from "@expo/vector-icons";
+import { useQrScanNavigation } from "@/src/features/qr/useQrScanNavigation";
 import { CameraView, useCameraPermissions } from "expo-camera";
-import { useRouter } from "expo-router";
+import { useFocusEffect, useRouter } from "expo-router";
 import { useCallback } from "react";
 import {
   ActivityIndicator,
@@ -16,6 +17,13 @@ export default function QrScannerScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const [permission, requestPermission] = useCameraPermissions();
+  const { handleBarcodeScan, resetScanSession } = useQrScanNavigation();
+
+  useFocusEffect(
+    useCallback(() => {
+      resetScanSession();
+    }, [resetScanSession]),
+  );
 
   const goBack = useCallback(() => {
     router.back();
@@ -55,6 +63,7 @@ export default function QrScannerScreen() {
         style={StyleSheet.absoluteFill}
         facing="back"
         barcodeScannerSettings={{ barcodeTypes: ["qr"] }}
+        onBarcodeScanned={({ data }) => handleBarcodeScan(data)}
       />
 
       <View

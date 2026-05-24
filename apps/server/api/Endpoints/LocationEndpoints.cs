@@ -11,7 +11,27 @@ public static class LocationEndpoints
 
         group.MapGet("/markers", GetLocationMarkersAsync);
         group.MapGet("/", GetLocationsListAsync);
+        group.MapGet("/{id:guid}/qr-link", GetLocationQrLinkAsync);
         group.MapGet("/{id:guid}", GetLocationByIdAsync);
+    }
+
+    private static async Task<IResult> GetLocationQrLinkAsync(
+        Guid id,
+        ILocationService locationService,
+        CancellationToken cancellationToken)
+    {
+        var location = await locationService.GetLocationByIdAsync(id, cancellationToken);
+        if (location is null)
+            return Results.NotFound();
+
+        var deepLink = $"app://location/{id:D}";
+        return Results.Ok(new
+        {
+            locationId = id,
+            title = location.Title,
+            deepLink,
+            hint = "Закодуйте deepLink у QR (друкарня, qr-code-generator.com тощо).",
+        });
     }
 
     private static async Task<IResult> GetLocationMarkersAsync(

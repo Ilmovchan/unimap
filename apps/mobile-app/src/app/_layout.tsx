@@ -5,6 +5,7 @@ import { SafeAreaProvider } from "react-native-safe-area-context";
 import { globalColors } from "../styles/styles";
 import { LocationProvider } from "../features/core/location/stores/LocationProvider";
 import { subscribeNewsAppBadgeRefresh } from "@/src/features/news/newsAppBadge";
+import { useRequestCameraPermissionOnLaunch } from "@/src/features/permissions/useRequestCameraPermissionOnLaunch";
 import { useEffect } from "react";
 import "@/src/config/logger";
 import * as SplashScreen from "expo-splash-screen";
@@ -18,6 +19,8 @@ SplashScreen.preventAutoHideAsync();
 enableFreeze(true);
 
 const RootStack = () => {
+  useRequestCameraPermissionOnLaunch();
+
   useEffect(() => {
     SplashScreen.hide();
   }, []);

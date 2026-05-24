@@ -1,6 +1,6 @@
 /**
- * Тимчасово false — без обмежень bounds і зуму на Camera.
- * Постав true, щоб повернути межі Одеси та min/max zoom.
+ * Межі камери та зум — межі Одеси (maxBounds, min/max zoom).
+ * followUserLocation не вмикається автоматично — карту можна рухати пальцем.
  */
 export const MAP_CAMERA_LIMITS_ENABLED = false;
 

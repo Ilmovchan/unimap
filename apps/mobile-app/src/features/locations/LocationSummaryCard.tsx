@@ -1,7 +1,7 @@
 import type { LocationMapDto } from "@/src/features/api/locationsClient";
 import { globalColors } from "@/src/styles/styles";
 import { Ionicons } from "@expo/vector-icons";
-import { Image } from "expo-image";
+import DeferredExpoImage from "@/src/features/ui/DeferredExpoImage";
 import { Platform, Pressable, StyleSheet, Text, View } from "react-native";
 import {
   locationAddressText,
@@ -41,12 +41,14 @@ export default function LocationSummaryCard({ location, onPress }: Props) {
         <View style={styles.mediaCol}>
           {imageUrl ? (
             <View style={styles.thumbFrame}>
-              <Image
+              <DeferredExpoImage
                 source={{ uri: imageUrl }}
                 style={styles.thumbImage}
                 contentFit="cover"
                 contentPosition="center"
                 transition={120}
+                deferMs={250}
+                placeholderStyle={styles.thumbPlaceholder}
                 accessibilityLabel={title}
               />
               {photoCount > 1 ? (

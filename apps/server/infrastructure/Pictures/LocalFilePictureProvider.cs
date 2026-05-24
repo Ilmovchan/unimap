@@ -24,11 +24,12 @@ public sealed class LocalFilePictureProvider : IPictureProvider
 
     public string? ResolvePublicUrl(LocationPhoto photo, string? requestBaseUrl)
     {
-        if (IsAbsoluteHttpUrl(photo.ImageUrl))
-            return photo.ImageUrl.Trim();
-
+        // Завжди будуємо URL з StorageKey + поточний хост запиту (телефон у dev не отримує localhost з БД).
         if (!string.IsNullOrWhiteSpace(photo.StorageKey))
             return ResolvePublicUrlForStorageKey(photo.StorageKey, requestBaseUrl);
+
+        if (IsAbsoluteHttpUrl(photo.ImageUrl))
+            return photo.ImageUrl.Trim();
 
         var imageUrl = photo.ImageUrl?.Trim();
         return string.IsNullOrWhiteSpace(imageUrl) ? null : imageUrl;

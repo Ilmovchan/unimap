@@ -2,6 +2,7 @@ import type { CameraRef } from "@maplibre/maplibre-react-native";
 import type { Position } from "geojson";
 import type { RefObject } from "react";
 import { Dimensions } from "react-native";
+import { MAP_CLUSTER_MAX_ZOOM_LEVEL } from "./mapClusterConfig";
 
 /** Було 1200 мс; +30% повільніша анімація (менш «різка»). */
 export const MARKER_FOCUS_ANIMATION_DURATION_MS = 1560;
@@ -15,11 +16,14 @@ export const ROUTE_CAMERA_PITCH_DEG = 58;
 const ZOOM_FOCUS_REFERENCE_START = 14;
 const ZOOM_FOCUS_REDUCTION = 0.3;
 
-/** Кнопка «до мене» — як раніше (ближче). */
-const ZOOM_PEAK_NAVIGATE_TO_USER = 20;
+/** Кнопка «до мене» — помірне наближення (~15.4), не «вулиця під ногами». */
+const ZOOM_PEAK_NAVIGATE_TO_USER = 16;
 
-/** Тап по одному маркеру — трохи далі від землі, ніж «до мене». */
-const ZOOM_PEAK_SINGLE_MARKER = 16.5;
+/**
+ * Тап по одному маркеру — зум вище clusterMaxZoom, щоб іконка не лишалась у кластері.
+ * (zoomLevelFromPeak дає ~18.2 при peak 20.)
+ */
+const ZOOM_PEAK_SINGLE_MARKER = MAP_CLUSTER_MAX_ZOOM_LEVEL + 3;
 
 function zoomLevelFromPeak(peak: number): number {
   const span = peak - ZOOM_FOCUS_REFERENCE_START;
@@ -28,7 +32,7 @@ function zoomLevelFromPeak(peak: number): number {
   );
 }
 
-/** Зум для кнопки навігації до користувача (~18.2 при стартовому 14). */
+/** Зум для кнопки навігації до користувача (~15.4 при стартовому 14). */
 export function markerFocusZoomLevel(): number {
   return zoomLevelFromPeak(ZOOM_PEAK_NAVIGATE_TO_USER);
 }
