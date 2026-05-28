@@ -2,6 +2,7 @@ import {
   fetchLocationById,
   type LocationDetailDto,
 } from "@/src/features/api/locationsClient";
+import { hapticRouteBuilt } from "@/src/features/haptics/unimapHaptics";
 import {
   fetchNavigationRoute,
   type NavigationRouteSummary,
@@ -282,6 +283,7 @@ export default function LocationMapPreviewSheet({
         });
         navTransitionRef.current = true;
         setRouteCoords(coordinates, summary);
+        hapticRouteBuilt();
       } catch (e) {
         const msg =
           e instanceof Error ? e.message : "Не вдалося побудувати маршрут.";

@@ -14,6 +14,7 @@ import {
   type LocationTypeGroup,
 } from "@/src/features/locations/groupLocationsByType";
 import LocationSummaryCard from "@/src/features/locations/LocationSummaryCard";
+import StackBackButton from "@/src/features/navigation/StackBackButton";
 import { globalColors } from "@/src/styles/styles";
 import { Ionicons } from "@expo/vector-icons";
 import { Stack, useRouter } from "expo-router";
@@ -121,6 +122,14 @@ export default function LocationsScreen() {
     [filterOpen, enabledCategoryKeys, toggleCategoryKey],
   );
 
+  const locationsScreenOptions = useMemo(
+    () => ({
+      headerLeft: () => <StackBackButton />,
+      headerRight: headerFilter,
+    }),
+    [headerFilter],
+  );
+
   const openOnMap = useCallback(
     (id: string) => {
       router.replace({
@@ -142,7 +151,7 @@ export default function LocationsScreen() {
   if (loading && locations.length === 0) {
     return (
       <>
-        <Stack.Screen options={{ headerRight: headerFilter }} />
+        <Stack.Screen options={locationsScreenOptions} />
         <View style={styles.centered}>
           <ActivityIndicator size="small" color={globalColors.accent} />
           <Text style={styles.loadingHint}>Завантаження…</Text>
@@ -153,7 +162,7 @@ export default function LocationsScreen() {
 
   return (
     <>
-      <Stack.Screen options={{ headerRight: headerFilter }} />
+      <Stack.Screen options={locationsScreenOptions} />
       <SectionList
         style={styles.screen}
         contentContainerStyle={styles.scrollContent}

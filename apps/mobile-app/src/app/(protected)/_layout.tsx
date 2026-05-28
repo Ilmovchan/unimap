@@ -1,3 +1,4 @@
+import StackBackButton from "@/src/features/navigation/StackBackButton";
 import { globalColors } from "@/src/styles/styles";
 import { Stack } from "expo-router";
 
@@ -20,6 +21,7 @@ const ProtectedLayout = () => {
           headerTintColor: globalColors.title,
           headerStyle: { backgroundColor: globalColors.background },
           headerBackButtonDisplayMode: "minimal",
+          headerLeft: () => <StackBackButton />,
           freezeOnBlur: true,
           fullScreenGestureEnabled: false,
         }}
@@ -35,6 +37,14 @@ const ProtectedLayout = () => {
           presentation: "fullScreenModal",
           animation: "slide_from_bottom",
         }}
+      />
+      <Stack.Screen
+        name="location/[id]"
+        options={{ headerShown: false, animation: "none" }}
+      />
+      <Stack.Screen
+        name="location/[id]/object/[objectId]"
+        options={{ headerShown: false, animation: "none" }}
       />
     </Stack>
   );

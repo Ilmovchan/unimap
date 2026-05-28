@@ -170,6 +170,8 @@ type Props = {
   onMarkerPress?: (id: string) => void;
   routeFeature?: RouteLineFeature | null;
   selectedLocationId?: string | null;
+  /** Показувати puck лише коли є реальна GPS-позиція (expo-location). */
+  showUserLocation?: boolean;
   /** Викликається, коли JSON стилю завантажено (до повного рендеру тайлів). */
   onMapStyleReady?: () => void;
 };
@@ -181,6 +183,7 @@ const Map = ({
   onMarkerPress,
   routeFeature = null,
   selectedLocationId = null,
+  showUserLocation = false,
   onMapStyleReady,
 }: Props) => {
   const [mapStyle, setMapStyle] = useState<MapStyleSpec | null>(null);
@@ -471,12 +474,14 @@ const Map = ({
         compassViewPosition={2}
         compassViewMargins={{ x: 18, y: 80 }}
       >
-        <UserLocation
-          visible={true}
-          minDisplacement={10}
-          renderMode="native"
-          showsUserHeadingIndicator={true}
-        />
+        {showUserLocation ? (
+          <UserLocation
+            visible
+            minDisplacement={10}
+            renderMode="normal"
+            showsUserHeadingIndicator
+          />
+        ) : null}
 
         {location && (
           <Camera

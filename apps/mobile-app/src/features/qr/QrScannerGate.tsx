@@ -11,7 +11,6 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { isExpoCameraAvailable } from "./qrCameraNative";
-
 const QrScannerScreen = lazy(() => import("./QrScannerScreen"));
 
 function NativeCameraMissing() {
@@ -39,6 +38,7 @@ function NativeCameraMissing() {
           expo-camera виконайте:
         </Text>
         <Text style={styles.code}>npx expo run:ios</Text>
+        <Text style={styles.code}>npx expo run:android</Text>
         <Text style={styles.permissionHint}>
           Потім знову відкрийте застосунок — не лише Reload у Metro.
         </Text>

@@ -1,7 +1,7 @@
 import { fetchLocationMarkers } from "@/src/features/api/locationsClient";
 import { useLocation } from "@/src/features/core/location/stores/LocationProvider";
 import { createFallbackMapLocation } from "@/src/features/map/defaultMapLocation";
-import * as Haptics from "expo-haptics";
+import { hapticNavigationArrived } from "@/src/features/haptics/unimapHaptics";
 import Map, {
   bearingDegreesLngLat,
   focusCameraLikeNavigateButton,
@@ -329,7 +329,7 @@ export default function MapScreen() {
     }
     if (!hasArrived || arrivalHapticDoneRef.current) return;
     arrivalHapticDoneRef.current = true;
-    void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    hapticNavigationArrived();
   }, [hasArrived, routeActive]);
 
   useRouteRefreshOnMove(
@@ -414,6 +414,7 @@ export default function MapScreen() {
         cameraRef={cameraRef}
         routeFeature={displayRouteFeature}
         selectedLocationId={selectedLocationId}
+        showUserLocation={hasGpsLocation}
         onMarkerPress={openLocationSheet}
         onMapStyleReady={handleMapStyleReady}
       />

@@ -1,4 +1,7 @@
+import { hapticQrScanSuccess } from "@/src/features/haptics/unimapHaptics";
+import { locationDeepLinkHref } from "@/src/features/qr/locationDeepLinkHref";
 import { parseUniMapQrPayload } from "@/src/features/qr/unimapQrPayload";
+import { QR_SCAN_REDIRECT_ENABLED } from "@/src/features/qr/qrScanningEnabled";
 import { useRouter } from "expo-router";
 import { useCallback, useRef } from "react";
 import { Alert } from "react-native";
@@ -17,6 +20,8 @@ export function useQrScanNavigation() {
 
   const handleBarcodeScan = useCallback(
     (data: string) => {
+      if (!QR_SCAN_REDIRECT_ENABLED) return;
+
       const now = Date.now();
       if (handledRef.current) return;
       if (now - lastScanAtRef.current < SCAN_COOLDOWN_MS) return;
@@ -33,16 +38,9 @@ export function useQrScanNavigation() {
 
       handledRef.current = true;
       lastScanAtRef.current = now;
+      hapticQrScanSuccess();
 
-      router.replace({
-        pathname: "/",
-        params: {
-          focusLocation: target.locationId,
-          ...(target.objectId
-            ? { highlightObjectId: target.objectId }
-            : {}),
-        },
-      });
+      router.replace(locationDeepLinkHref(target.locationId, target.objectId));
     },
     [router],
   );
