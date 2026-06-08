@@ -2,6 +2,8 @@ using api.AdminEndpoints;
 using api.Auth;
 using api.Endpoints;
 using app;
+using domain.Abstractions;
+using domain.Entities;
 using infrastructure;
 using infrastructure.BackgroundServices;
 using infrastructure.Pictures;
@@ -53,28 +55,9 @@ if (app.Environment.IsDevelopment() || app.Environment.IsEnvironment("Docker"))
 {
     app.UseSwagger();
     app.UseSwaggerUI();
-
-    // using (var scope = app.Services.CreateScope())
-    // {
-    //     var dbContextFactory = scope.ServiceProvider.GetRequiredService<IDbContextFactory<UniMapDbContext>>();
-    //     await using var db = await dbContextFactory.CreateDbContextAsync();
-    //     await db.Database.MigrateAsync();
-
-    //     if (!await db.Admins.AnyAsync())
-    //     {
-    //         var passwordHasher = scope.ServiceProvider.GetRequiredService<IAdminPasswordHasher>();
-    //         db.Admins.Add(new Admin
-    //         {
-    //             Id = Guid.NewGuid(),
-    //             Username = "admin",
-    //             Email = "admin@unimap.local",
-    //             PasswordHash = passwordHasher.Hash("admin123"),
-    //             Role = AdminRole.SuperAdmin,
-    //         });
-    //         await db.SaveChangesAsync();
-    //     }
-    // }
 }
+
+await EnsureDefaultSuperAdminAsync(app.Services);
 
 app.UseCors();
 app.UseAuthentication();
@@ -88,3 +71,42 @@ app.MapMapEndpoints();
 app.MapAdminEndpoints();
 
 app.Run();
+
+static async Task EnsureDefaultSuperAdminAsync(IServiceProvider services)
+{
+    const string username = "admin";
+    const string email = "admin@admin.com";
+    const string password = "admin";
+
+    using var scope = services.CreateScope();
+    var dbContextFactory = scope.ServiceProvider.GetRequiredService<IDbContextFactory<UniMapDbContext>>();
+    var passwordHasher = scope.ServiceProvider.GetRequiredService<IAdminPasswordHasher>();
+
+    await using var db = await dbContextFactory.CreateDbContextAsync();
+    await db.Database.MigrateAsync();
+
+    var admin = await db.Admins.FirstOrDefaultAsync(x => x.Email == email)
+        ?? await db.Admins.FirstOrDefaultAsync(x => x.Username == username);
+
+    if (admin is null)
+    {
+        db.Admins.Add(new Admin
+        {
+            Id = Guid.NewGuid(),
+            Username = username,
+            Email = email,
+            PasswordHash = passwordHasher.Hash(password),
+            Role = AdminRole.SuperAdmin,
+        });
+    }
+    else
+    {
+        if (string.IsNullOrWhiteSpace(admin.Username))
+            admin.Username = username;
+        admin.Email = email;
+        admin.PasswordHash = passwordHasher.Hash(password);
+        admin.Role = AdminRole.SuperAdmin;
+    }
+
+    await db.SaveChangesAsync();
+}

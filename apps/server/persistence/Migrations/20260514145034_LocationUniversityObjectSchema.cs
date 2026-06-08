@@ -8,9 +8,6 @@ namespace persistence.Migrations;
 /// <inheritdoc />
 public partial class LocationUniversityObjectSchema : Migration
 {
-    private static readonly DateTimeOffset SeedTime =
-        new(2026, 1, 1, 0, 0, 0, TimeSpan.Zero);
-
     /// <inheritdoc />
     protected override void Up(MigrationBuilder migrationBuilder)
     {
@@ -31,8 +28,6 @@ public partial class LocationUniversityObjectSchema : Migration
             table: "university_object_type",
             column: "code",
             unique: true);
-
-        SeedUniversityObjectTypes(migrationBuilder);
 
         migrationBuilder.DropIndex(
             name: "IX_location_type_title",
@@ -357,23 +352,5 @@ public partial class LocationUniversityObjectSchema : Migration
 
         migrationBuilder.DropTable(
             name: "university_object_type");
-    }
-
-    private static void SeedUniversityObjectTypes(MigrationBuilder migrationBuilder)
-    {
-        void Row(Guid id, string code, string nameUk) =>
-            migrationBuilder.InsertData(
-                table: "university_object_type",
-                columns: new[] { "id", "code", "name_uk", "created_at", "updated_at" },
-                values: new object[] { id, code, nameUk, SeedTime, SeedTime });
-
-        Row(Guid.Parse("b1000001-0001-4000-8000-000000000001"), "faculty", "Факультет");
-        Row(Guid.Parse("b1000001-0001-4000-8000-000000000002"), "department", "Кафедра");
-        Row(Guid.Parse("b1000001-0001-4000-8000-000000000003"), "administrative_unit", "Адміністративний підрозділ");
-        Row(Guid.Parse("b1000001-0001-4000-8000-000000000004"), "classroom", "Аудиторія");
-        Row(Guid.Parse("b1000001-0001-4000-8000-000000000005"), "library_unit", "Бібліотечний підрозділ");
-        Row(Guid.Parse("b1000001-0001-4000-8000-000000000006"), "sport_object", "Спортивний об’єкт");
-        Row(Guid.Parse("b1000001-0001-4000-8000-000000000007"), "service", "Сервіс");
-        Row(Guid.Parse("b1000001-0001-4000-8000-000000000008"), "other", "Інше");
     }
 }

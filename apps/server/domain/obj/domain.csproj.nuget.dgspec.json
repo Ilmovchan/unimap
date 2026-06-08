@@ -1,17 +1,17 @@
 {
   "format": 1,
   "restore": {
-    "/Users/user/unimap/apps/server/domain/domain.csproj": {}
+    "/Users/user/code/unimap/apps/server/domain/domain.csproj": {}
   },
   "projects": {
-    "/Users/user/unimap/apps/server/domain/domain.csproj": {
+    "/Users/user/code/unimap/apps/server/domain/domain.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "/Users/user/unimap/apps/server/domain/domain.csproj",
+        "projectUniqueName": "/Users/user/code/unimap/apps/server/domain/domain.csproj",
         "projectName": "domain",
-        "projectPath": "/Users/user/unimap/apps/server/domain/domain.csproj",
+        "projectPath": "/Users/user/code/unimap/apps/server/domain/domain.csproj",
         "packagesPath": "/Users/user/.nuget/packages/",
-        "outputPath": "/Users/user/unimap/apps/server/domain/obj/",
+        "outputPath": "/Users/user/code/unimap/apps/server/domain/obj/",
         "projectStyle": "PackageReference",
         "configFilePaths": [
           "/Users/user/.nuget/NuGet/NuGet.Config"

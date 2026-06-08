@@ -12,10 +12,28 @@ export type LocationPhotoAdminDto = {
   updatedAt: string
 }
 
+function normalizePhotoUrl(photo: LocationPhotoAdminDto): LocationPhotoAdminDto {
+  if (!photo.url) return photo
+
+  try {
+    const url = new URL(photo.url, window.location.origin)
+    if (url.pathname.startsWith('/api/pictures/')) {
+      return {
+        ...photo,
+        url: `${url.pathname}${url.search}${url.hash}`,
+      }
+    }
+  } catch {
+    // Keep the original value if it is not a URL the browser can parse.
+  }
+
+  return photo
+}
+
 export function listLocationPhotos(locationId: string): Promise<LocationPhotoAdminDto[]> {
   return apiRequest<LocationPhotoAdminDto[]>(
     `/api/admin/locations/${encodeURIComponent(locationId)}/photos`,
-  )
+  ).then((photos) => photos.map(normalizePhotoUrl))
 }
 
 export function uploadLocationPhoto(
@@ -31,7 +49,7 @@ export function uploadLocationPhoto(
     `/api/admin/locations/${encodeURIComponent(locationId)}/photos`,
     form,
     { method: 'POST' },
-  )
+  ).then(normalizePhotoUrl)
 }
 
 export function updateLocationPhoto(
@@ -45,7 +63,7 @@ export function updateLocationPhoto(
       method: 'PUT',
       body: JSON.stringify(body),
     },
-  )
+  ).then(normalizePhotoUrl)
 }
 
 export function deleteLocationPhoto(locationId: string, photoId: string): Promise<void> {

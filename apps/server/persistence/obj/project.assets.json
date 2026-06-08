@@ -2805,11 +2805,11 @@
   "project": {
     "version": "1.0.0",
     "restore": {
-      "projectUniqueName": "/Users/user/unimap/apps/server/persistence/persistence.csproj",
+      "projectUniqueName": "/Users/user/code/unimap/apps/server/persistence/persistence.csproj",
       "projectName": "persistence",
-      "projectPath": "/Users/user/unimap/apps/server/persistence/persistence.csproj",
+      "projectPath": "/Users/user/code/unimap/apps/server/persistence/persistence.csproj",
       "packagesPath": "/Users/user/.nuget/packages/",
-      "outputPath": "/Users/user/unimap/apps/server/persistence/obj/",
+      "outputPath": "/Users/user/code/unimap/apps/server/persistence/obj/",
       "projectStyle": "PackageReference",
       "configFilePaths": [
         "/Users/user/.nuget/NuGet/NuGet.Config"
@@ -2825,8 +2825,8 @@
           "framework": "net9.0",
           "targetAlias": "net9.0",
           "projectReferences": {
-            "/Users/user/unimap/apps/server/domain/domain.csproj": {
-              "projectPath": "/Users/user/unimap/apps/server/domain/domain.csproj"
+            "/Users/user/code/unimap/apps/server/domain/domain.csproj": {
+              "projectPath": "/Users/user/code/unimap/apps/server/domain/domain.csproj"
             }
           }
         }

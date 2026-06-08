@@ -29,7 +29,7 @@ public sealed class AdminLocationService(
 
         var entity = new Location
         {
-            Id = command.Id ?? Guid.Empty,
+            Id = command.Id ?? Guid.NewGuid(),
             LocationTypeId = command.LocationTypeId,
             Title = command.Title.Trim(),
             Latitude = command.Latitude ?? 0,

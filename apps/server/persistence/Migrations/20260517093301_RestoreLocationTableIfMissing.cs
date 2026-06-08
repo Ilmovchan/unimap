@@ -25,6 +25,47 @@ public partial class RestoreLocationTableIfMissing : Migration
                 CONSTRAINT "PK_location" PRIMARY KEY (id)
             );
 
+            ALTER TABLE location
+                ADD COLUMN IF NOT EXISTS title character varying(150) NOT NULL DEFAULT 'Локація';
+
+            ALTER TABLE location
+                ADD COLUMN IF NOT EXISTS description text;
+
+            ALTER TABLE location
+                ADD COLUMN IF NOT EXISTS address_json jsonb;
+
+            ALTER TABLE location
+                ADD COLUMN IF NOT EXISTS latitude double precision NOT NULL DEFAULT 0;
+
+            ALTER TABLE location
+                ADD COLUMN IF NOT EXISTS longitude double precision NOT NULL DEFAULT 0;
+
+            DO $$
+            BEGIN
+                IF EXISTS (
+                    SELECT 1
+                    FROM information_schema.columns
+                    WHERE table_schema = 'public'
+                      AND table_name = 'location'
+                      AND column_name = 'lat'
+                ) THEN
+                    EXECUTE 'UPDATE location SET latitude = lat WHERE latitude = 0';
+                END IF;
+            END $$;
+
+            DO $$
+            BEGIN
+                IF EXISTS (
+                    SELECT 1
+                    FROM information_schema.columns
+                    WHERE table_schema = 'public'
+                      AND table_name = 'location'
+                      AND column_name = 'lng'
+                ) THEN
+                    EXECUTE 'UPDATE location SET longitude = lng WHERE longitude = 0';
+                END IF;
+            END $$;
+
             CREATE INDEX IF NOT EXISTS "IX_location_location_type_id"
                 ON location (location_type_id);
 
@@ -54,9 +95,8 @@ public partial class RestoreLocationTableIfMissing : Migration
                 0,
                 NULL,
                 NULL,
-                NULL,
-                (NOW() AT TIME ZONE 'utc'),
-                (NOW() AT TIME ZONE 'utc')
+                NOW(),
+                NOW()
             FROM university_object uo
             WHERE uo.location_id IS NOT NULL
               AND NOT EXISTS (SELECT 1 FROM location l WHERE l.id = uo.location_id)

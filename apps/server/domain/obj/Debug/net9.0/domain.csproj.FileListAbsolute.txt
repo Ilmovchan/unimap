@@ -9,3 +9,14 @@
 /Users/user/unimap/apps/server/domain/obj/Debug/net9.0/refint/domain.dll
 /Users/user/unimap/apps/server/domain/obj/Debug/net9.0/domain.pdb
 /Users/user/unimap/apps/server/domain/obj/Debug/net9.0/ref/domain.dll
+/Users/user/code/unimap/apps/server/domain/bin/Debug/net9.0/domain.deps.json
+/Users/user/code/unimap/apps/server/domain/bin/Debug/net9.0/domain.dll
+/Users/user/code/unimap/apps/server/domain/bin/Debug/net9.0/domain.pdb
+/Users/user/code/unimap/apps/server/domain/obj/Debug/net9.0/domain.GeneratedMSBuildEditorConfig.editorconfig
+/Users/user/code/unimap/apps/server/domain/obj/Debug/net9.0/domain.AssemblyInfoInputs.cache
+/Users/user/code/unimap/apps/server/domain/obj/Debug/net9.0/domain.AssemblyInfo.cs
+/Users/user/code/unimap/apps/server/domain/obj/Debug/net9.0/domain.csproj.CoreCompileInputs.cache
+/Users/user/code/unimap/apps/server/domain/obj/Debug/net9.0/domain.dll
+/Users/user/code/unimap/apps/server/domain/obj/Debug/net9.0/refint/domain.dll
+/Users/user/code/unimap/apps/server/domain/obj/Debug/net9.0/domain.pdb
+/Users/user/code/unimap/apps/server/domain/obj/Debug/net9.0/ref/domain.dll

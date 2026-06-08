@@ -478,7 +478,7 @@ const Map = ({
           <UserLocation
             visible
             minDisplacement={10}
-            renderMode="normal"
+            renderMode="native"
             showsUserHeadingIndicator
           />
         ) : null}

@@ -22,31 +22,34 @@ const POD_SNIPPET = `
 `;
 
 function withPodfileFix(config) {
-  return withPodfile(config, (podfile) => {
+  return withPodfile(config, (config) => {
+    const podfile = config.modResults.contents;
     if (podfile.includes(POD_MARKER)) {
-      return podfile;
+      return config;
     }
 
     const anchor = "react_native_post_install(";
     const idx = podfile.indexOf(anchor);
     if (idx === -1) {
-      return podfile;
+      return config;
     }
 
     const closeIdx = podfile.indexOf(")\n", idx);
     if (closeIdx === -1) {
-      return podfile;
+      return config;
     }
 
-    return (
+    config.modResults.contents = (
       podfile.slice(0, closeIdx + 2) + POD_SNIPPET + podfile.slice(closeIdx + 2)
     );
+    return config;
   });
 }
 
 /** RN bundle script (ip.txt) і CocoaPods — без sandbox. */
 function withXcodeSandboxFix(config) {
-  return withXcodeProject(config, (project) => {
+  return withXcodeProject(config, (config) => {
+    const project = config.modResults;
     const section = project.pbxXCBuildConfigurationSection();
     for (const key of Object.keys(section)) {
       const entry = section[key];
@@ -54,7 +57,7 @@ function withXcodeSandboxFix(config) {
         entry.buildSettings.ENABLE_USER_SCRIPT_SANDBOXING = "NO";
       }
     }
-    return project;
+    return config;
   });
 }
 
