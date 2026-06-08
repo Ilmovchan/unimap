@@ -7,6 +7,10 @@ internal sealed class MapTilerCacheEntry
     public required string ContentType { get; init; }
 
     public bool RequiresUrlRewrite { get; init; }
+
+    public required TimeSpan Ttl { get; init; }
+
+    public required string ETag { get; init; }
 }
 
 internal static class MapTilerCacheKeys

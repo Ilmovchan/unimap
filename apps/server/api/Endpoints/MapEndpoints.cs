@@ -21,6 +21,7 @@ public static class MapEndpoints
         try
         {
             var json = await mapStyleService.GetStyleJsonAsync(context.Request, cancellationToken);
+            context.Response.Headers.CacheControl = "private, max-age=3600";
             return Results.Content(json, "application/json");
         }
         catch (Exception ex)

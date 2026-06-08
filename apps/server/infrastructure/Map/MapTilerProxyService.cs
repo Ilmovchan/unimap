@@ -1,4 +1,5 @@
 using System.Text;
+using System.Security.Cryptography;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Options;
@@ -63,17 +64,19 @@ public sealed class MapTilerProxyService(
                           ?? MapTilerProxy.GuessContentType(upstreamPath);
         var bytes = await response.Content.ReadAsByteArrayAsync(cancellationToken);
         var requiresRewrite = MapTilerProxy.ShouldRewriteJsonBody(contentType, upstreamPath);
+        var ttl = MapTilerCacheTtl.ForPath(upstreamPath, opts.Cache);
 
         var entry = new MapTilerCacheEntry
         {
             Body = bytes,
             ContentType = contentType,
             RequiresUrlRewrite = requiresRewrite,
+            Ttl = ttl,
+            ETag = CreateWeakETag(bytes),
         };
 
         if (opts.Cache.Enabled)
         {
-            var ttl = MapTilerCacheTtl.ForPath(upstreamPath, opts.Cache);
             memoryCache.Set(
                 cacheKey,
                 entry,
@@ -92,6 +95,12 @@ public sealed class MapTilerProxyService(
         HttpRequest request,
         MapTilerOptions opts)
     {
+        ApplyCacheHeaders(request.HttpContext.Response, entry);
+        if (IsNotModified(request, entry.ETag))
+        {
+            return Results.StatusCode(StatusCodes.Status304NotModified);
+        }
+
         if (!entry.RequiresUrlRewrite)
         {
             return Results.Bytes(entry.Body, entry.ContentType);
@@ -102,5 +111,25 @@ public sealed class MapTilerProxyService(
         var body = Encoding.UTF8.GetString(entry.Body);
         var rewritten = MapTilerStyleService.RewriteStyleUrls(body, upstreamBase, proxyBase);
         return Results.Content(rewritten, entry.ContentType);
+    }
+
+    private static bool IsNotModified(HttpRequest request, string etag) =>
+        request.Headers.IfNoneMatch.Any(value =>
+            value?.Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries)
+                .Any(candidate => candidate.Equals(etag, StringComparison.Ordinal)) == true);
+
+    private static void ApplyCacheHeaders(HttpResponse response, MapTilerCacheEntry entry)
+    {
+        var maxAge = Math.Max(60, (int)entry.Ttl.TotalSeconds);
+        response.Headers.CacheControl = entry.RequiresUrlRewrite
+            ? $"private, max-age={maxAge}"
+            : $"public, max-age={maxAge}, immutable";
+        response.Headers.ETag = entry.ETag;
+    }
+
+    private static string CreateWeakETag(byte[] bytes)
+    {
+        var hash = SHA256.HashData(bytes);
+        return $"W/\"{Convert.ToHexString(hash)}\"";
     }
 }
