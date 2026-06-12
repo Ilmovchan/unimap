@@ -7,7 +7,8 @@ public sealed record LocationAdminCreateCommand(
     double? Latitude,
     double? Longitude,
     string? Description,
-    string? AddressJson);
+    string? AddressJson,
+    IReadOnlyList<LocationScheduleAdminCommand>? Schedule);
 
 public sealed record LocationAdminUpdateCommand(
     Guid LocationTypeId,
@@ -15,4 +16,11 @@ public sealed record LocationAdminUpdateCommand(
     double? Latitude,
     double? Longitude,
     string? Description,
-    string? AddressJson);
+    string? AddressJson,
+    IReadOnlyList<LocationScheduleAdminCommand>? Schedule);
+
+public sealed record LocationScheduleAdminCommand(
+    int DayOfWeek,
+    TimeOnly? OpeningAt,
+    TimeOnly? ClosingAt,
+    bool IsClosed);

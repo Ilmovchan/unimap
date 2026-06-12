@@ -14,6 +14,7 @@ export type LocationUniversityObjectDto = {
   floor?: number | null;
   roomNumber?: string | null;
   description?: string | null;
+  websiteUrl?: string | null;
 };
 
 /** Маркер для карти (легкий список). */
@@ -33,6 +34,15 @@ export type LocationPhotoDto = {
   altUk?: string | null;
 };
 
+export type LocationScheduleDto = {
+  id: string;
+  locationId?: string | null;
+  dayOfWeek: number;
+  openingAt?: string | null;
+  closingAt?: string | null;
+  isClosed: boolean;
+};
+
 /** Локація для списку / деталей. */
 export type LocationMapDto = {
   id: string;
@@ -48,6 +58,7 @@ export type LocationMapDto = {
   description?: string | null;
   imageUrl?: string | null;
   photos?: LocationPhotoDto[];
+  schedule?: LocationScheduleDto[];
   markerKey?: string | null;
   objects?: LocationUniversityObjectDto[];
   highlightedObjectId?: string | null;
@@ -263,6 +274,11 @@ function parseUniversityObjectsFromApi(
     const descr = pickRaw(o, "description", "Description");
     const description =
       descr === undefined || descr === null ? null : String(descr);
+    const websiteRaw = pickRaw(o, "websiteUrl", "WebsiteUrl");
+    const websiteUrl =
+      websiteRaw === undefined || websiteRaw === null
+        ? null
+        : String(websiteRaw).trim() || null;
     out.push({
       id,
       name,
@@ -271,6 +287,7 @@ function parseUniversityObjectsFromApi(
       floor,
       roomNumber,
       description,
+      websiteUrl,
     });
   }
   return out.length ? out : undefined;
@@ -293,6 +310,57 @@ function parseLocationPhotosFromApi(raw: unknown): LocationPhotoDto[] | undefine
     out.push({ id, url: rewriteDevServerHost(url) ?? url, altUk });
   }
   return out.length ? out : undefined;
+}
+
+function parseLocationScheduleFromApi(raw: unknown): LocationScheduleDto[] | undefined {
+  if (!Array.isArray(raw) || raw.length === 0) return undefined;
+  const out: LocationScheduleDto[] = [];
+  for (const item of raw) {
+    if (typeof item !== "object" || item === null) continue;
+    const o = item as Record<string, unknown>;
+    const id = String(pickRaw(o, "id", "Id") ?? "").trim();
+    const dayRaw = pickRaw(o, "dayOfWeek", "DayOfWeek");
+    const dayOfWeek =
+      typeof dayRaw === "number"
+        ? dayRaw
+        : typeof dayRaw === "string"
+          ? Number(dayRaw.trim())
+          : NaN;
+    if (!id || !Number.isInteger(dayOfWeek)) continue;
+
+    const locationIdRaw = pickRaw(o, "locationId", "LocationId");
+    const locationId =
+      locationIdRaw === undefined || locationIdRaw === null
+        ? null
+        : String(locationIdRaw).trim() || null;
+    const openingRaw = pickRaw(o, "openingAt", "OpeningAt");
+    const openingAt =
+      openingRaw === undefined || openingRaw === null
+        ? null
+        : String(openingRaw).trim() || null;
+    const closingRaw = pickRaw(o, "closingAt", "ClosingAt");
+    const closingAt =
+      closingRaw === undefined || closingRaw === null
+        ? null
+        : String(closingRaw).trim() || null;
+    const closedRaw = pickRaw(o, "isClosed", "IsClosed");
+    const isClosed =
+      typeof closedRaw === "boolean"
+        ? closedRaw
+        : String(closedRaw ?? "").trim().toLowerCase() === "true";
+
+    out.push({
+      id,
+      locationId,
+      dayOfWeek,
+      openingAt,
+      closingAt,
+      isClosed,
+    });
+  }
+  return out.length
+    ? out.sort((a, b) => a.dayOfWeek - b.dayOfWeek)
+    : undefined;
 }
 
 function resolveMainImageUrl(
@@ -362,6 +430,9 @@ function normalizeLocationMap(raw: Record<string, unknown>): LocationMapDto {
   const description =
     descr === undefined || descr === null ? null : String(descr);
   const photos = parseLocationPhotosFromApi(pickRaw(raw, "photos", "Photos"));
+  const schedule = parseLocationScheduleFromApi(
+    pickRaw(raw, "schedule", "Schedule", "schedules", "Schedules"),
+  );
   const img = pickRaw(raw, "imageUrl", "ImageUrl");
   const imageUrl = resolveMainImageUrl(
     img === undefined || img === null ? null : String(img).trim() || null,
@@ -403,6 +474,7 @@ function normalizeLocationMap(raw: Record<string, unknown>): LocationMapDto {
     description,
     imageUrl,
     photos,
+    schedule,
     markerKey,
     objects,
     highlightedObjectId,

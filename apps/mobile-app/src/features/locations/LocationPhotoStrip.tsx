@@ -11,7 +11,7 @@ import LocationPhotoViewerModal from "./LocationPhotoViewerModal";
 const THUMB_GAP = 10;
 const THUMB_RADIUS = 12;
 const THUMB_HEIGHT = 124;
-const MAX_VISIBLE = 2;
+const MAX_VISIBLE_PHOTOS = 2;
 
 type Props = {
   photos: LocationPhotoDto[];
@@ -70,15 +70,16 @@ export default function LocationPhotoStrip({
 
   if (photos.length === 0) return null;
 
-  const visible = photos.slice(0, MAX_VISIBLE);
-  const extraCount = photos.length - MAX_VISIBLE;
+  const visible = photos.slice(0, MAX_VISIBLE_PHOTOS);
+  const extraCount = Math.max(photos.length - MAX_VISIBLE_PHOTOS, 0);
 
   return (
     <>
       <View style={cardStyles.card}>
         <View style={styles.row}>
           {visible.map((photo, index) => {
-            const showMoreOverlay = index === MAX_VISIBLE - 1 && extraCount > 0;
+            const showMoreOverlay =
+              index === MAX_VISIBLE_PHOTOS - 1 && extraCount > 0;
             return (
               <Pressable
                 key={photo.id}

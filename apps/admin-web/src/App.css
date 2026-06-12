@@ -575,6 +575,55 @@ tbody tr:last-child td {
   overflow-y: auto;
 }
 
+.detail-schedule {
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface);
+}
+
+.detail-schedule-title {
+  margin-bottom: 8px;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--subtitle);
+  text-transform: uppercase;
+  letter-spacing: 0.35px;
+}
+
+.detail-schedule-empty {
+  font-size: 14px;
+  color: var(--subtitle);
+}
+
+.detail-schedule-list {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px 18px;
+  max-width: 560px;
+}
+
+.detail-schedule-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  min-width: 0;
+  font-size: 14px;
+}
+
+.detail-schedule-day {
+  font-weight: 600;
+}
+
+.detail-schedule-time {
+  color: var(--title);
+  white-space: nowrap;
+}
+
+.detail-schedule-closed {
+  color: var(--subtitle);
+}
+
 .detail-actions {
   display: flex;
   gap: 8px;
@@ -837,10 +886,77 @@ tbody tr:last-child td {
   width: auto;
 }
 
+.schedule-editor {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  max-width: 760px;
+  margin-top: 16px;
+  padding-top: 14px;
+  border-top: 1px solid var(--border);
+}
+
+.schedule-toggle,
+.schedule-closed {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.schedule-toggle input,
+.schedule-closed input {
+  width: auto;
+}
+
+.schedule-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.schedule-row {
+  display: grid;
+  grid-template-columns: 120px 96px minmax(128px, 1fr) minmax(128px, 1fr);
+  align-items: center;
+  gap: 10px;
+}
+
+.schedule-day-name {
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.schedule-time-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.schedule-time-field span {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--subtitle);
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+
 @media (max-width: 900px) {
   .admin {
     width: 100%;
     padding: 20px 12px 32px;
+  }
+
+  .schedule-row {
+    grid-template-columns: 1fr;
+    gap: 6px;
+    padding: 10px 0;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .detail-schedule-list {
+    grid-template-columns: 1fr;
   }
 
 }

@@ -28,6 +28,10 @@ internal static class AdminEntityResponses
             entity.Description,
             imageUrl = LocationPhotoResolver.MainImageUrl(entity),
             addressJson = entity.AddressJson,
+            schedule = entity.Schedules
+                .OrderBy(x => x.DayOfWeek)
+                .Select(ScheduleResponse)
+                .ToList(),
             createdAt = entity.CreatedAt,
             updatedAt = entity.UpdatedAt,
         };
@@ -47,6 +51,10 @@ internal static class AdminEntityResponses
             entity.Description,
             imageUrl = LocationPhotoResolver.MainImageUrl(entity, pictureProvider, requestBaseUrl),
             addressJson = entity.AddressJson,
+            schedule = entity.Schedules
+                .OrderBy(x => x.DayOfWeek)
+                .Select(ScheduleResponse)
+                .ToList(),
             createdAt = entity.CreatedAt,
             updatedAt = entity.UpdatedAt,
         };
@@ -64,6 +72,17 @@ internal static class AdminEntityResponses
             altUk = photo.AltUk,
             createdAt = photo.CreatedAt,
             updatedAt = photo.UpdatedAt,
+        };
+
+    private static object ScheduleResponse(Schedule schedule) =>
+        new
+        {
+            schedule.Id,
+            locationId = schedule.LocationId,
+            dayOfWeek = schedule.DayOfWeek,
+            openingAt = schedule.OpeningAt,
+            closingAt = schedule.ClosingAt,
+            isClosed = schedule.IsClosed,
         };
 
     internal static object UniversityObjectType(UniversityObjectType entity) =>
@@ -84,6 +103,7 @@ internal static class AdminEntityResponses
             objectTypeId = entity.ObjectTypeId,
             entity.Title,
             entity.Description,
+            websiteUrl = entity.WebsiteUrl,
             createdAt = entity.CreatedAt,
             updatedAt = entity.UpdatedAt,
         };
@@ -98,6 +118,7 @@ internal static class AdminEntityResponses
             objectTypeTitleUk = entity.ObjectType?.TitleUk ?? string.Empty,
             entity.Title,
             entity.Description,
+            websiteUrl = entity.WebsiteUrl,
             createdAt = entity.CreatedAt,
             updatedAt = entity.UpdatedAt,
         };

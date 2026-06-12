@@ -16,6 +16,8 @@ public sealed class UniversityObject : ITimestampedEntity
 
     public string? Description { get; set; }
 
+    public string? WebsiteUrl { get; set; }
+
     public DateTimeOffset CreatedAt { get; set; }
 
     public DateTimeOffset UpdatedAt { get; set; }

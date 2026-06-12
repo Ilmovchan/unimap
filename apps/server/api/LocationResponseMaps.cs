@@ -30,6 +30,18 @@ public static class LocationResponseMaps
             type = o.ObjectType.Code,
             typeName = o.ObjectType.TitleUk,
             o.Description,
+            websiteUrl = o.WebsiteUrl,
+        };
+
+    private static object ScheduleBrief(Schedule schedule) =>
+        new
+        {
+            schedule.Id,
+            locationId = schedule.LocationId,
+            dayOfWeek = schedule.DayOfWeek,
+            openingAt = schedule.OpeningAt,
+            closingAt = schedule.ClosingAt,
+            isClosed = schedule.IsClosed,
         };
 
     /// <summary>Список локацій для карти (координати лише як latitude/longitude, об’єкти включно).</summary>
@@ -51,6 +63,10 @@ public static class LocationResponseMaps
             location.AddressJson,
             createdAt = location.CreatedAt,
             updatedAt = location.UpdatedAt,
+            schedule = location.Schedules
+                .OrderBy(x => x.DayOfWeek)
+                .Select(ScheduleBrief)
+                .ToList(),
             objects = location.UniversityObjects
                 .OrderBy(x => x.Title)
                 .Select(UniversityObjectBrief)
@@ -79,6 +95,10 @@ public static class LocationResponseMaps
             createdAt = location.CreatedAt,
             updatedAt = location.UpdatedAt,
             highlightedObjectId,
+            schedule = location.Schedules
+                .OrderBy(x => x.DayOfWeek)
+                .Select(ScheduleBrief)
+                .ToList(),
             objects = location.UniversityObjects
                 .OrderBy(x => x.Title)
                 .Select(UniversityObjectBrief)

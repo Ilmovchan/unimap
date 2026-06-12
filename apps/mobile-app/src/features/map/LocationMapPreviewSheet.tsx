@@ -13,7 +13,7 @@ import {
 } from "@/src/features/locations/LocationDetailContent";
 import LocationDetailSectionsSkeleton from "@/src/features/locations/LocationDetailSectionsSkeleton";
 import { globalColors } from "@/src/styles/styles";
-import { Ionicons } from "@expo/vector-icons";
+import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import * as Location from "expo-location";
 import BottomSheet, {
   BottomSheetBackdrop,
@@ -512,6 +512,24 @@ export default function LocationMapPreviewSheet({
           <View style={styles.sheetMain}>
             <View style={styles.toolbarWrap}>
               <View style={styles.toolbar}>
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel="Інформація про локацію"
+                  accessibilityHint="Розгорнути картку локації"
+                  hitSlop={12}
+                  style={({ pressed }) => [
+                    styles.iconButton,
+                    pressed && styles.iconButtonPressed,
+                  ]}
+                  onPress={expandSheet}
+                >
+                  <MaterialCommunityIcons
+                    name="web"
+                    size={24}
+                    color="#000"
+                  />
+                </Pressable>
+
                 <Pressable
                   accessibilityRole="button"
                   accessibilityHint="Розгорнути картку локації"

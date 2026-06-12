@@ -25,6 +25,88 @@ type Props = {
   table: AdminTable
 }
 
+type ScheduleFormDay = {
+  dayOfWeek: number
+  openingAt: string
+  closingAt: string
+  isClosed: boolean
+}
+
+type ApiScheduleDay = {
+  dayOfWeek?: unknown
+  openingAt?: unknown
+  closingAt?: unknown
+  isClosed?: unknown
+}
+
+const WEEK_DAYS = [
+  { value: 1, label: 'Понеділок' },
+  { value: 2, label: 'Вівторок' },
+  { value: 3, label: 'Середа' },
+  { value: 4, label: 'Четвер' },
+  { value: 5, label: 'Пʼятниця' },
+  { value: 6, label: 'Субота' },
+  { value: 7, label: 'Неділя' },
+] as const
+
+function emptyScheduleForm(): ScheduleFormDay[] {
+  return WEEK_DAYS.map((day) => ({
+    dayOfWeek: day.value,
+    openingAt: '',
+    closingAt: '',
+    isClosed: false,
+  }))
+}
+
+function timeToInput(value: unknown): string {
+  if (value === null || value === undefined) return ''
+  return String(value).trim().slice(0, 5)
+}
+
+function rowToScheduleForm(row: Row): { enabled: boolean; days: ScheduleFormDay[] } {
+  const raw = row.schedule
+  if (!Array.isArray(raw) || raw.length === 0) {
+    return { enabled: false, days: emptyScheduleForm() }
+  }
+
+  const byDay = new Map<number, ApiScheduleDay>()
+  for (const item of raw) {
+    if (!item || typeof item !== 'object') continue
+    const scheduleDay = item as ApiScheduleDay
+    const dayOfWeek = Number(scheduleDay.dayOfWeek)
+    if (Number.isInteger(dayOfWeek)) byDay.set(dayOfWeek, scheduleDay)
+  }
+
+  return {
+    enabled: true,
+    days: WEEK_DAYS.map((day) => {
+      const item = byDay.get(day.value)
+      return {
+        dayOfWeek: day.value,
+        openingAt: timeToInput(item?.openingAt),
+        closingAt: timeToInput(item?.closingAt),
+        isClosed: Boolean(item?.isClosed),
+      }
+    }),
+  }
+}
+
+function scheduleToPayload(enabled: boolean, days: ScheduleFormDay[]): unknown[] | null {
+  if (!enabled) return []
+
+  const hasIncompleteOpenDay = days.some(
+    (day) => !day.isClosed && (!day.openingAt.trim() || !day.closingAt.trim()),
+  )
+  if (days.length !== 7 || hasIncompleteOpenDay) return null
+
+  return days.map((day) => ({
+    dayOfWeek: day.dayOfWeek,
+    openingAt: day.isClosed ? null : day.openingAt,
+    closingAt: day.isClosed ? null : day.closingAt,
+    isClosed: day.isClosed,
+  }))
+}
+
 function emptyForm(fields: TableField[]): Record<string, string> {
   const form: Record<string, string> = {}
   for (const field of fields) {
@@ -43,6 +125,8 @@ function rowToForm(row: Row, fields: TableField[]): Record<string, string> {
       form[field.key] = value ? 'true' : 'false'
     } else if (field.type === 'password') {
       form[field.key] = ''
+    } else if (field.type === 'time' && value !== null && value !== undefined) {
+      form[field.key] = String(value).slice(0, 5)
     } else if (value !== null && value !== undefined) {
       form[field.key] = String(value)
     }
@@ -85,6 +169,10 @@ function formatCell(value: unknown, field: TableField): string {
   if (field.type === 'datetime') {
     const date = new Date(String(value))
     return Number.isNaN(date.getTime()) ? String(value) : date.toLocaleString('uk-UA')
+  }
+  if (field.type === 'time') {
+    const text = String(value).trim()
+    return text ? text.slice(0, 5) : '—'
   }
   if (field.key === 'addressJson') {
     const text = String(value).trim()
@@ -214,7 +302,6 @@ function computeCompactLayout(
   rows: Row[],
 ): ColumnLayout {
   const widths = fixedWidths()
-  let middleTotal = 0
 
   for (const field of middleFields) {
     let w = isTitleColumn(field)
@@ -226,7 +313,6 @@ function computeCompactLayout(
     const minW = minListColumnWidth(field)
     if (minW > 0) w = Math.max(w, minW)
     widths[field.key] = w
-    middleTotal += w
   }
 
   return {
@@ -453,6 +539,8 @@ export default function EntityCrudPanel({ table }: Props) {
   const [bulkSelectedIds, setBulkSelectedIds] = useState<Set<string>>(() => new Set())
   const [bulkDeleting, setBulkDeleting] = useState(false)
   const [sort, setSort] = useState<SortState | null>(null)
+  const [scheduleEnabled, setScheduleEnabled] = useState(false)
+  const [scheduleDays, setScheduleDays] = useState<ScheduleFormDay[]>(() => emptyScheduleForm())
 
   const listFields = useMemo(() => table.fields.filter((f) => f.list), [table.fields])
   const { middle: middleListFields, tail: tailListFields } = useMemo(
@@ -530,6 +618,8 @@ export default function EntityCrudPanel({ table }: Props) {
     setBulkDeleteMode(false)
     setBulkSelectedIds(new Set())
     setSort(null)
+    setScheduleEnabled(false)
+    setScheduleDays(emptyScheduleForm())
   }, [table, load, formFields])
 
   useEffect(() => {
@@ -568,6 +658,8 @@ export default function EntityCrudPanel({ table }: Props) {
     setSelectedRow(null)
     setEditingId(null)
     setForm(emptyForm(formFields))
+    setScheduleEnabled(false)
+    setScheduleDays(emptyScheduleForm())
     setFormOpen(true)
   }
 
@@ -575,6 +667,9 @@ export default function EntityCrudPanel({ table }: Props) {
     setSelectedRow(null)
     setEditingId(row.id)
     setForm(rowToForm(row, formFields))
+    const schedule = rowToScheduleForm(row)
+    setScheduleEnabled(schedule.enabled)
+    setScheduleDays(schedule.days)
     setFormOpen(true)
   }
 
@@ -582,6 +677,8 @@ export default function EntityCrudPanel({ table }: Props) {
     setFormOpen(false)
     setEditingId(null)
     setForm(emptyForm(formFields))
+    setScheduleEnabled(false)
+    setScheduleDays(emptyScheduleForm())
   }
 
   const onSubmit = async (e: FormEvent) => {
@@ -593,10 +690,18 @@ export default function EntityCrudPanel({ table }: Props) {
       if (table.id === 'admins') {
         const plainPassword = form.password?.trim()
         if (plainPassword) payload = { ...payload, passwordHash: plainPassword }
-        const { password: _removed, ...rest } = payload as Record<string, unknown> & {
-          password?: unknown
-        }
+        const rest = { ...payload }
+        delete rest.password
         payload = rest
+      }
+      if (table.id === 'locations') {
+        const schedulePayload = scheduleToPayload(scheduleEnabled, scheduleDays)
+        if (schedulePayload === null) {
+          setError('Розклад потрібно заповнити для всіх 7 днів або залишити порожнім.')
+          setSaving(false)
+          return
+        }
+        payload = { ...payload, schedule: schedulePayload }
       }
       if (editingId) {
         await adminUpdate(table.resource, editingId, payload)
@@ -641,6 +746,8 @@ export default function EntityCrudPanel({ table }: Props) {
     setFormOpen(false)
     setEditingId(null)
     setForm(emptyForm(formFields))
+    setScheduleEnabled(false)
+    setScheduleDays(emptyScheduleForm())
   }
 
   const cancelBulkDelete = () => {
@@ -687,6 +794,24 @@ export default function EntityCrudPanel({ table }: Props) {
 
   const updateField = (key: string, value: string) => {
     setForm((prev) => ({ ...prev, [key]: value }))
+  }
+
+  const updateScheduleDay = (
+    dayOfWeek: number,
+    patch: Partial<Omit<ScheduleFormDay, 'dayOfWeek'>>,
+  ) => {
+    setScheduleDays((prev) =>
+      prev.map((day) =>
+        day.dayOfWeek === dayOfWeek
+          ? {
+              ...day,
+              ...patch,
+              openingAt: patch.isClosed ? '' : patch.openingAt ?? day.openingAt,
+              closingAt: patch.isClosed ? '' : patch.closingAt ?? day.closingAt,
+            }
+          : day,
+      ),
+    )
   }
 
   return (
@@ -977,6 +1102,8 @@ export default function EntityCrudPanel({ table }: Props) {
                         type={
                           field.type === 'number'
                             ? 'number'
+                            : field.type === 'time'
+                              ? 'time'
                             : field.type === 'password'
                               ? 'password'
                               : 'text'
@@ -993,6 +1120,74 @@ export default function EntityCrudPanel({ table }: Props) {
               </div>
             ))}
           </div>
+          {table.id === 'locations' ? (
+            <section className="schedule-editor">
+              <label className="schedule-toggle">
+                <input
+                  type="checkbox"
+                  checked={scheduleEnabled}
+                  onChange={(e) => {
+                    setScheduleEnabled(e.target.checked)
+                    if (!e.target.checked) setScheduleDays(emptyScheduleForm())
+                  }}
+                />
+                <span>Додати розклад</span>
+              </label>
+              {scheduleEnabled ? (
+                <div className="schedule-grid" aria-label="Розклад локації">
+                  {WEEK_DAYS.map((weekDay) => {
+                    const day = scheduleDays.find((item) => item.dayOfWeek === weekDay.value)
+                    if (!day) return null
+                    return (
+                      <div className="schedule-row" key={weekDay.value}>
+                        <div className="schedule-day-name">{weekDay.label}</div>
+                        <label className="schedule-closed">
+                          <input
+                            type="checkbox"
+                            checked={day.isClosed}
+                            onChange={(e) =>
+                              updateScheduleDay(weekDay.value, {
+                                isClosed: e.target.checked,
+                              })
+                            }
+                          />
+                          Закрито
+                        </label>
+                        <div className="schedule-time-field">
+                          <span>Відкриття</span>
+                          <input
+                            type="time"
+                            value={day.openingAt}
+                            disabled={day.isClosed}
+                            required={scheduleEnabled && !day.isClosed}
+                            onChange={(e) =>
+                              updateScheduleDay(weekDay.value, {
+                                openingAt: e.target.value,
+                              })
+                            }
+                          />
+                        </div>
+                        <div className="schedule-time-field">
+                          <span>Закриття</span>
+                          <input
+                            type="time"
+                            value={day.closingAt}
+                            disabled={day.isClosed}
+                            required={scheduleEnabled && !day.isClosed}
+                            onChange={(e) =>
+                              updateScheduleDay(weekDay.value, {
+                                closingAt: e.target.value,
+                              })
+                            }
+                          />
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              ) : null}
+            </section>
+          ) : null}
           <div className="form-actions">
             <button type="submit" className="btn btn-primary" disabled={saving}>
               {saving ? 'Збереження…' : 'Зберегти'}

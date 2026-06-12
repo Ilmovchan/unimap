@@ -46,7 +46,8 @@ public static class UniversityObjectAdminEndpoints
                 dto.LocationId,
                 dto.ObjectTypeId,
                 dto.Title,
-                dto.Description),
+                dto.Description,
+                dto.WebsiteUrl),
             cancellationToken);
 
         return result.ToHttpResult(entity =>
@@ -67,7 +68,8 @@ public static class UniversityObjectAdminEndpoints
                 dto.LocationId,
                 dto.ObjectTypeId,
                 dto.Title,
-                dto.Description),
+                dto.Description,
+                dto.WebsiteUrl),
             cancellationToken);
 
         return result.ToHttpResult(entity => Results.Ok(AdminEntityResponses.UniversityObject(entity)));
@@ -87,5 +89,6 @@ public static class UniversityObjectAdminEndpoints
         Guid LocationId,
         Guid ObjectTypeId,
         string? Title,
-        string? Description);
+        string? Description,
+        string? WebsiteUrl);
 }

@@ -17,6 +17,8 @@ public sealed class UniMapDbContext : DbContext
 
     public DbSet<LocationPhoto> LocationPhotos => Set<LocationPhoto>();
 
+    public DbSet<Schedule> Schedules => Set<Schedule>();
+
     public DbSet<UniversityObjectType> UniversityObjectTypes => Set<UniversityObjectType>();
 
     public DbSet<UniversityObject> UniversityObjects => Set<UniversityObject>();

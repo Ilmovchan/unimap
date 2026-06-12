@@ -10,6 +10,7 @@ services:
       ASPNETCORE_ENVIRONMENT: Docker
       ASPNETCORE_URLS: http://+:8080
       ExternalApis__MapTiler__ApiKey: "n6Gpp6UqyuVMeOGRigco"
+      ExternalApis__OpenRouteService__ApiKey: "eyJvcmciOiI1YjNjZTM1OTc4NTExMTAwMDFjZjYyNDgiLCJpZCI6IjExYWViZDk1OTIwNDRlOGQ5ZWRiYmE0MmUwNDc5YjNlIiwiaCI6Im11cm11cjY0In0="
     expose:
       - "8080"
     ports:

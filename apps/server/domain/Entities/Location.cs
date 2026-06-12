@@ -27,4 +27,7 @@ public sealed class Location : ITimestampedEntity
 
     public ICollection<LocationPhoto> Photos { get; set; } =
         new List<LocationPhoto>();
+
+    public ICollection<Schedule> Schedules { get; set; } =
+        new List<Schedule>();
 }

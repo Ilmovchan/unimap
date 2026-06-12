@@ -247,6 +247,42 @@ namespace persistence.Migrations
                     b.ToTable("news", (string)null);
                 });
 
+            modelBuilder.Entity("domain.Entities.Schedule", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<TimeOnly?>("ClosingAt")
+                        .HasColumnType("time without time zone")
+                        .HasColumnName("closing_at");
+
+                    b.Property<int>("DayOfWeek")
+                        .HasColumnType("integer")
+                        .HasColumnName("day_of_week");
+
+                    b.Property<bool>("IsClosed")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_closed");
+
+                    b.Property<Guid>("LocationId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("location_id");
+
+                    b.Property<TimeOnly?>("OpeningAt")
+                        .HasColumnType("time without time zone")
+                        .HasColumnName("opening_at");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("LocationId");
+
+                    b.HasIndex("LocationId", "DayOfWeek")
+                        .IsUnique();
+
+                    b.ToTable("schedule", (string)null);
+                });
+
             modelBuilder.Entity("domain.Entities.UniversityObject", b =>
                 {
                     b.Property<Guid>("Id")
@@ -279,6 +315,11 @@ namespace persistence.Migrations
                     b.Property<DateTimeOffset>("UpdatedAt")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("updated_at");
+
+                    b.Property<string>("WebsiteUrl")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)")
+                        .HasColumnName("website_url");
 
                     b.HasKey("Id");
 
@@ -347,6 +388,17 @@ namespace persistence.Migrations
                     b.Navigation("Location");
                 });
 
+            modelBuilder.Entity("domain.Entities.Schedule", b =>
+                {
+                    b.HasOne("domain.Entities.Location", "Location")
+                        .WithMany("Schedules")
+                        .HasForeignKey("LocationId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Location");
+                });
+
             modelBuilder.Entity("domain.Entities.UniversityObject", b =>
                 {
                     b.HasOne("domain.Entities.Location", "Location")
@@ -369,6 +421,8 @@ namespace persistence.Migrations
             modelBuilder.Entity("domain.Entities.Location", b =>
                 {
                     b.Navigation("Photos");
+
+                    b.Navigation("Schedules");
 
                     b.Navigation("UniversityObjects");
                 });

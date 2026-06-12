@@ -19,5 +19,10 @@ public interface IAdminLocationRepository
         Action<Location> applyChanges,
         CancellationToken cancellationToken = default);
 
+    Task ReplaceScheduleAsync(
+        Guid locationId,
+        IReadOnlyList<Schedule> schedule,
+        CancellationToken cancellationToken = default);
+
     Task<bool> DeleteByIdAsync(Guid id, CancellationToken cancellationToken = default);
 }

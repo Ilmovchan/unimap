@@ -41,6 +41,9 @@ public sealed class AdminUniversityObjectService(
             ObjectTypeId = command.ObjectTypeId,
             Title = command.Title.Trim(),
             Description = command.Description,
+            WebsiteUrl = string.IsNullOrWhiteSpace(command.WebsiteUrl)
+                ? null
+                : command.WebsiteUrl.Trim(),
         };
 
         await repository.AddAsync(entity, cancellationToken);
@@ -77,6 +80,9 @@ public sealed class AdminUniversityObjectService(
                     entity.Title = command.Title.Trim();
                 if (command.Description is not null)
                     entity.Description = command.Description;
+                entity.WebsiteUrl = string.IsNullOrWhiteSpace(command.WebsiteUrl)
+                    ? null
+                    : command.WebsiteUrl.Trim();
             },
             cancellationToken);
 

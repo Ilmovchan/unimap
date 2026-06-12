@@ -33,6 +33,10 @@ public sealed class UniversityObjectConfiguration : IEntityTypeConfiguration<Uni
             .HasColumnName("description")
             .HasMaxLength(4000);
 
+        builder.Property(x => x.WebsiteUrl)
+            .HasColumnName("website_url")
+            .HasMaxLength(2000);
+
         builder.Property(x => x.CreatedAt)
             .HasColumnName("created_at")
             .IsRequired();

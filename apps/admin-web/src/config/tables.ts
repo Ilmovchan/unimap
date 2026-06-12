@@ -5,6 +5,7 @@ export type FieldType =
   | 'checkbox'
   | 'uuid'
   | 'datetime'
+  | 'time'
   | 'fk'
   | 'enum'
   | 'password'
@@ -121,6 +122,7 @@ export const ADMIN_TABLES: AdminTable[] = [
         form: true,
       },
       { key: 'description', label: 'description', type: 'textarea', list: true, wide: true },
+      { key: 'websiteUrl', label: 'website_url', type: 'text', list: true },
       { key: 'createdAt', label: 'created_at', type: 'datetime', list: true, form: false },
       { key: 'updatedAt', label: 'updated_at', type: 'datetime', list: true, form: false },
     ],

@@ -14,6 +14,7 @@ public sealed class AdminLocationRepository(IDbContextFactory<UniMapDbContext> d
             .AsNoTracking()
             .Include(x => x.LocationType)
             .Include(x => x.Photos)
+            .Include(x => x.Schedules)
             .OrderBy(x => x.Title)
             .ToListAsync(cancellationToken);
     }
@@ -25,6 +26,7 @@ public sealed class AdminLocationRepository(IDbContextFactory<UniMapDbContext> d
             .AsNoTracking()
             .Include(x => x.LocationType)
             .Include(x => x.Photos)
+            .Include(x => x.Schedules)
             .FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
     }
 
@@ -62,6 +64,23 @@ public sealed class AdminLocationRepository(IDbContextFactory<UniMapDbContext> d
         applyChanges(entity);
         await db.SaveChangesAsync(cancellationToken);
         return entity;
+    }
+
+    public async Task ReplaceScheduleAsync(
+        Guid locationId,
+        IReadOnlyList<Schedule> schedule,
+        CancellationToken cancellationToken = default)
+    {
+        await using var db = await dbContextFactory.CreateDbContextAsync(cancellationToken);
+        var existing = await db.Schedules
+            .Where(x => x.LocationId == locationId)
+            .ToListAsync(cancellationToken);
+
+        db.Schedules.RemoveRange(existing);
+        if (schedule.Count > 0)
+            db.Schedules.AddRange(schedule);
+
+        await db.SaveChangesAsync(cancellationToken);
     }
 
     public async Task<bool> DeleteByIdAsync(Guid id, CancellationToken cancellationToken = default)

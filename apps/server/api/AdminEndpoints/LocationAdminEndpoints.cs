@@ -59,7 +59,12 @@ public static class LocationAdminEndpoints
                 dto.Latitude,
                 dto.Longitude,
                 dto.Description,
-                dto.AddressJson),
+                dto.AddressJson,
+                dto.Schedule?.Select(x => new LocationScheduleAdminCommand(
+                    x.DayOfWeek,
+                    x.OpeningAt,
+                    x.ClosingAt,
+                    x.IsClosed)).ToList()),
             cancellationToken);
 
         return result.ToHttpResult(location =>
@@ -85,7 +90,12 @@ public static class LocationAdminEndpoints
                 dto.Latitude,
                 dto.Longitude,
                 dto.Description,
-                dto.AddressJson),
+                dto.AddressJson,
+                dto.Schedule?.Select(x => new LocationScheduleAdminCommand(
+                    x.DayOfWeek,
+                    x.OpeningAt,
+                    x.ClosingAt,
+                    x.IsClosed)).ToList()),
             cancellationToken);
 
         return result.ToHttpResult(location =>
@@ -108,5 +118,12 @@ public static class LocationAdminEndpoints
         double? Latitude,
         double? Longitude,
         string? Description,
-        string? AddressJson);
+        string? AddressJson,
+        IReadOnlyList<LocationScheduleWriteDto>? Schedule);
+
+    private sealed record LocationScheduleWriteDto(
+        int DayOfWeek,
+        TimeOnly? OpeningAt,
+        TimeOnly? ClosingAt,
+        bool IsClosed);
 }

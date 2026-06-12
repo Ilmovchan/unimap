@@ -4,6 +4,13 @@ import LocationPhotosPanel from './LocationPhotosPanel'
 
 type Row = Record<string, unknown> & { id: string }
 
+type ScheduleItem = {
+  dayOfWeek: number
+  openingAt: string | null
+  closingAt: string | null
+  isClosed: boolean
+}
+
 type Props = {
   table: AdminTable
   row: Row
@@ -48,6 +55,86 @@ function MaskedSecret({ value }: { value: string }) {
     { className: 'detail-secret' },
     createElement('span', { className: 'detail-secret-mask', 'aria-hidden': true }, '•'.repeat(12)),
     createElement('span', { className: 'detail-secret-value' }, text),
+  )
+}
+
+const WEEK_DAY_LABELS = new Map([
+  [1, 'Понеділок'],
+  [2, 'Вівторок'],
+  [3, 'Середа'],
+  [4, 'Четвер'],
+  [5, 'Пʼятниця'],
+  [6, 'Субота'],
+  [7, 'Неділя'],
+])
+
+function parseSchedule(value: unknown): ScheduleItem[] {
+  if (!Array.isArray(value)) return []
+
+  const parsed: ScheduleItem[] = []
+  for (const item of value) {
+    if (!item || typeof item !== 'object') continue
+    const raw = item as Record<string, unknown>
+    const dayOfWeek = Number(raw.dayOfWeek)
+    if (!Number.isInteger(dayOfWeek)) continue
+
+    parsed.push({
+      dayOfWeek,
+      openingAt:
+        raw.openingAt === null || raw.openingAt === undefined
+          ? null
+          : String(raw.openingAt),
+      closingAt:
+        raw.closingAt === null || raw.closingAt === undefined
+          ? null
+          : String(raw.closingAt),
+      isClosed: Boolean(raw.isClosed),
+    })
+  }
+
+  return parsed.sort((a, b) => a.dayOfWeek - b.dayOfWeek)
+}
+
+function formatScheduleTime(value: string | null | undefined): string {
+  const text = value?.trim()
+  return text ? text.slice(0, 5) : '—'
+}
+
+function LocationScheduleDetail({ value }: { value: unknown }) {
+  const schedule = parseSchedule(value)
+
+  return createElement(
+    'section',
+    { className: 'detail-schedule' },
+    createElement('div', { className: 'detail-schedule-title' }, 'Розклад'),
+    schedule.length === 0
+      ? createElement('div', { className: 'detail-schedule-empty' }, 'Не задано')
+      : createElement(
+          'div',
+          { className: 'detail-schedule-list' },
+          ...schedule.map((day) =>
+            createElement(
+              'div',
+              { key: day.dayOfWeek, className: 'detail-schedule-row' },
+              createElement(
+                'span',
+                { className: 'detail-schedule-day' },
+                WEEK_DAY_LABELS.get(day.dayOfWeek) ?? `День ${day.dayOfWeek}`,
+              ),
+              createElement(
+                'span',
+                {
+                  className: day.isClosed
+                    ? 'detail-schedule-time detail-schedule-closed'
+                    : 'detail-schedule-time',
+                },
+                day.isClosed
+                  ? 'Закрито'
+                  : `${formatScheduleTime(day.openingAt)} - ${formatScheduleTime(day.closingAt)}`,
+              ),
+            ),
+          ),
+        ),
   )
 }
 
@@ -108,6 +195,9 @@ export default function EntityDetailModal({
             locationId: row.id,
             locationTitle: String(row.title ?? '').trim() || undefined,
           })
+        : null,
+      table.id === 'locations'
+        ? createElement(LocationScheduleDetail, { value: row.schedule })
         : null,
       createElement(
         'dl',
