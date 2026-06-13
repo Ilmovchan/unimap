@@ -40,10 +40,16 @@ public sealed class AdminUniversityObjectService(
             LocationId = command.LocationId,
             ObjectTypeId = command.ObjectTypeId,
             Title = command.Title.Trim(),
-            Description = command.Description,
-            WebsiteUrl = string.IsNullOrWhiteSpace(command.WebsiteUrl)
+            Description = NormalizeOptionalText(command.Description),
+            Manager = string.IsNullOrWhiteSpace(command.Manager)
                 ? null
-                : command.WebsiteUrl.Trim(),
+                : command.Manager.Trim(),
+            PhoneNumber = string.IsNullOrWhiteSpace(command.PhoneNumber)
+                ? null
+                : command.PhoneNumber.Trim(),
+            WebUrl = string.IsNullOrWhiteSpace(command.WebUrl)
+                ? null
+                : command.WebUrl.Trim(),
         };
 
         await repository.AddAsync(entity, cancellationToken);
@@ -78,11 +84,16 @@ public sealed class AdminUniversityObjectService(
                     entity.ObjectTypeId = command.ObjectTypeId;
                 if (!string.IsNullOrWhiteSpace(command.Title))
                     entity.Title = command.Title.Trim();
-                if (command.Description is not null)
-                    entity.Description = command.Description;
-                entity.WebsiteUrl = string.IsNullOrWhiteSpace(command.WebsiteUrl)
+                entity.Description = NormalizeOptionalText(command.Description);
+                entity.Manager = string.IsNullOrWhiteSpace(command.Manager)
                     ? null
-                    : command.WebsiteUrl.Trim();
+                    : command.Manager.Trim();
+                entity.PhoneNumber = string.IsNullOrWhiteSpace(command.PhoneNumber)
+                    ? null
+                    : command.PhoneNumber.Trim();
+                entity.WebUrl = string.IsNullOrWhiteSpace(command.WebUrl)
+                    ? null
+                    : command.WebUrl.Trim();
             },
             cancellationToken);
 
@@ -104,4 +115,7 @@ public sealed class AdminUniversityObjectService(
         await cacheInvalidator.InvalidateLocationsAsync(cancellationToken);
         return ServiceResult<bool>.Ok(true);
     }
+
+    private static string? NormalizeOptionalText(string? value) =>
+        string.IsNullOrWhiteSpace(value) ? null : value.Trim();
 }

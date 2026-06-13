@@ -28,6 +28,7 @@ internal static class AdminEntityResponses
             entity.Description,
             imageUrl = LocationPhotoResolver.MainImageUrl(entity),
             addressJson = entity.AddressJson,
+            hasShelter = entity.HasShelter,
             schedule = entity.Schedules
                 .OrderBy(x => x.DayOfWeek)
                 .Select(ScheduleResponse)
@@ -51,6 +52,7 @@ internal static class AdminEntityResponses
             entity.Description,
             imageUrl = LocationPhotoResolver.MainImageUrl(entity, pictureProvider, requestBaseUrl),
             addressJson = entity.AddressJson,
+            hasShelter = entity.HasShelter,
             schedule = entity.Schedules
                 .OrderBy(x => x.DayOfWeek)
                 .Select(ScheduleResponse)
@@ -103,7 +105,9 @@ internal static class AdminEntityResponses
             objectTypeId = entity.ObjectTypeId,
             entity.Title,
             entity.Description,
-            websiteUrl = entity.WebsiteUrl,
+            manager = entity.Manager,
+            phoneNumber = entity.PhoneNumber,
+            webUrl = entity.WebUrl,
             createdAt = entity.CreatedAt,
             updatedAt = entity.UpdatedAt,
         };
@@ -118,7 +122,9 @@ internal static class AdminEntityResponses
             objectTypeTitleUk = entity.ObjectType?.TitleUk ?? string.Empty,
             entity.Title,
             entity.Description,
-            websiteUrl = entity.WebsiteUrl,
+            manager = entity.Manager,
+            phoneNumber = entity.PhoneNumber,
+            webUrl = entity.WebUrl,
             createdAt = entity.CreatedAt,
             updatedAt = entity.UpdatedAt,
         };

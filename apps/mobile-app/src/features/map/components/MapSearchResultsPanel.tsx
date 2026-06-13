@@ -13,33 +13,28 @@ export type MapSearchResultPlaceholder = {
   id: string;
   title: string;
   subtitle?: string;
+  matchedObjectId?: string | null;
 };
-
-/** Заглушки — замінити на реальні результати пошуку. */
-export const MAP_SEARCH_PLACEHOLDER_RESULTS: MapSearchResultPlaceholder[] = [
-  {
-    id: "placeholder-1",
-    title: "вул. Довженка 9а",
-    subtitle: "3 об'єкти",
-  },
-  {
-    id: "placeholder-2",
-    title: "вул. Преображенська 24",
-    subtitle: "Деканат, укриття",
-  },
-  {
-    id: "placeholder-3",
-    title: "бульв. Французький 123",
-    subtitle: "1 об'єкт",
-  },
-];
 
 type Props = {
+  query: string;
+  results: MapSearchResultPlaceholder[];
   onClose: () => void;
+  onSelect: (result: MapSearchResultPlaceholder) => void;
 };
 
-/** Плашка результатів пошуку (поки без логіки). */
-export default function MapSearchResultsPanel({ onClose }: Props) {
+/** Плашка результатів пошуку. */
+export default function MapSearchResultsPanel({
+  query,
+  results,
+  onClose,
+  onSelect,
+}: Props) {
+  const trimmedQuery = query.trim();
+  const emptyText = trimmedQuery
+    ? "Нічого не знайдено"
+    : "Введіть назву локації або об’єкта";
+
   return (
     <View style={styles.panel}>
       <View style={styles.panelHeader}>
@@ -65,12 +60,16 @@ export default function MapSearchResultsPanel({ onClose }: Props) {
         bounces={false}
         showsVerticalScrollIndicator={false}
       >
-        {MAP_SEARCH_PLACEHOLDER_RESULTS.map((item, index) => (
+        {results.length === 0 ? (
+          <Text style={styles.emptyText}>{emptyText}</Text>
+        ) : null}
+
+        {results.map((item, index) => (
           <Pressable
             key={item.id}
             accessibilityRole="button"
-            accessibilityHint="Поки без дії"
-            onPress={() => {}}
+            accessibilityHint="Відкрити локацію"
+            onPress={() => onSelect(item)}
             style={({ pressed }) => [
               styles.row,
               index === 0 && styles.rowFirst,
@@ -88,7 +87,7 @@ export default function MapSearchResultsPanel({ onClose }: Props) {
                 {item.title}
               </Text>
               {item.subtitle ? (
-                <Text style={styles.rowSubtitle} numberOfLines={1}>
+                <Text style={styles.rowSubtitle} numberOfLines={2}>
                   {item.subtitle}
                 </Text>
               ) : null}
@@ -97,6 +96,7 @@ export default function MapSearchResultsPanel({ onClose }: Props) {
               name="chevron-forward"
               size={18}
               color={globalColors.icon}
+              style={styles.rowChevron}
             />
           </Pressable>
         ))}
@@ -108,7 +108,7 @@ export default function MapSearchResultsPanel({ onClose }: Props) {
 const styles = StyleSheet.create({
   panel: {
     marginTop: 10,
-    maxHeight: 280,
+    maxHeight: 360,
     backgroundColor: globalColors.surface,
     borderRadius: 16,
     borderWidth: 1,
@@ -155,14 +155,14 @@ const styles = StyleSheet.create({
     opacity: 0.75,
   },
   scroll: {
-    maxHeight: 220,
+    maxHeight: 300,
   },
   scrollContent: {
     paddingBottom: 8,
   },
   row: {
     flexDirection: "row",
-    alignItems: "center",
+    alignItems: "flex-start",
     paddingHorizontal: 16,
     paddingVertical: 12,
     borderTopWidth: 1,
@@ -175,6 +175,7 @@ const styles = StyleSheet.create({
     opacity: 0.88,
   },
   rowIcon: {
+    marginTop: 2,
     marginRight: 12,
   },
   rowBody: {
@@ -191,6 +192,16 @@ const styles = StyleSheet.create({
   },
   rowSubtitle: {
     marginTop: 4,
+    fontSize: 14,
+    lineHeight: 20,
+    color: globalColors.subtitle,
+  },
+  rowChevron: {
+    marginTop: 12,
+  },
+  emptyText: {
+    paddingHorizontal: 16,
+    paddingVertical: 18,
     fontSize: 14,
     lineHeight: 20,
     color: globalColors.subtitle,

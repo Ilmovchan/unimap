@@ -8,6 +8,7 @@ public sealed record LocationAdminCreateCommand(
     double? Longitude,
     string? Description,
     string? AddressJson,
+    bool HasShelter,
     IReadOnlyList<LocationScheduleAdminCommand>? Schedule);
 
 public sealed record LocationAdminUpdateCommand(
@@ -17,6 +18,7 @@ public sealed record LocationAdminUpdateCommand(
     double? Longitude,
     string? Description,
     string? AddressJson,
+    bool HasShelter,
     IReadOnlyList<LocationScheduleAdminCommand>? Schedule);
 
 public sealed record LocationScheduleAdminCommand(

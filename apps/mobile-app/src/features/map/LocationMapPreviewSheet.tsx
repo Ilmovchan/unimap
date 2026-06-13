@@ -112,6 +112,7 @@ export default function LocationMapPreviewSheet({
   const [detailLoading, setDetailLoading] = useState(false);
   const [detailError, setDetailError] = useState<string | null>(null);
   const [navLoading, setNavLoading] = useState(false);
+  const [shelterHintVisible, setShelterHintVisible] = useState(false);
   const navTransitionRef = useRef(false);
   /** Користувач сам згорнув navsheet (інакше при відкритті тримаємо розгорнутим). */
   const userCollapsedNavRef = useRef(false);
@@ -126,6 +127,7 @@ export default function LocationMapPreviewSheet({
   );
 
   const objectCount = sheetLoc?.objects?.length ?? 0;
+  const hasShelter = Boolean(sheetLoc?.hasShelter);
 
   const isNavPanel = Boolean(locationId && routeFeature);
 
@@ -138,17 +140,23 @@ export default function LocationMapPreviewSheet({
     return PREVIEW_SNAP_POINTS;
   }, [isNavPanel, scrollBottomPad]);
 
+  const toggleShelterHint = useCallback(() => {
+    setShelterHintVisible((current) => !current);
+  }, []);
+
   useEffect(() => {
     if (!locationId) {
       setDetail(null);
       setDetailError(null);
       setDetailLoading(false);
+      setShelterHintVisible(false);
       return;
     }
 
     let cancelled = false;
     setDetailLoading(true);
     setDetailError(null);
+    setShelterHintVisible(false);
     void (async () => {
       try {
         const d = await fetchLocationById(locationId, {
@@ -512,23 +520,36 @@ export default function LocationMapPreviewSheet({
           <View style={styles.sheetMain}>
             <View style={styles.toolbarWrap}>
               <View style={styles.toolbar}>
-                <Pressable
-                  accessibilityRole="button"
-                  accessibilityLabel="Інформація про локацію"
-                  accessibilityHint="Розгорнути картку локації"
-                  hitSlop={12}
-                  style={({ pressed }) => [
-                    styles.iconButton,
-                    pressed && styles.iconButtonPressed,
-                  ]}
-                  onPress={expandSheet}
-                >
-                  <MaterialCommunityIcons
-                    name="web"
-                    size={24}
-                    color="#000"
-                  />
-                </Pressable>
+                {hasShelter ? (
+                  <View style={styles.shelterBadgeWrap}>
+                    <Pressable
+                      accessibilityRole="button"
+                      accessibilityLabel="Має укриття"
+                      hitSlop={10}
+                      style={({ pressed }) => [
+                        styles.shelterBadge,
+                        pressed && styles.iconButtonPressed,
+                      ]}
+                      onPress={toggleShelterHint}
+                    >
+                      <MaterialCommunityIcons
+                        name="shield-home"
+                        size={18}
+                        color={globalColors.title}
+                      />
+                    </Pressable>
+                    {shelterHintVisible ? (
+                      <Pressable
+                        accessibilityRole="button"
+                        accessibilityLabel="Сховати пояснення"
+                        onPress={toggleShelterHint}
+                        style={styles.shelterHint}
+                      >
+                        <Text style={styles.shelterHintText}>Має укриття</Text>
+                      </Pressable>
+                    ) : null}
+                  </View>
+                ) : null}
 
                 <Pressable
                   accessibilityRole="button"
@@ -723,6 +744,7 @@ const styles = StyleSheet.create({
   },
   toolbarWrap: {
     paddingBottom: 4,
+    zIndex: 10,
   },
   sheetBody: {
     marginTop: 8,
@@ -746,12 +768,45 @@ const styles = StyleSheet.create({
   iconButtonPressed: {
     opacity: 0.88,
   },
+  shelterBadgeWrap: {
+    position: "relative",
+    alignSelf: "center",
+  },
+  shelterBadge: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    backgroundColor: "rgba(34, 197, 94, 0.14)",
+    borderWidth: 1,
+    borderColor: "rgba(34, 197, 94, 0.36)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  shelterHint: {
+    position: "absolute",
+    top: 42,
+    left: 0,
+    zIndex: 20,
+    minWidth: 112,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: globalColors.border,
+    backgroundColor: globalColors.surface,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+  },
+  shelterHintText: {
+    fontSize: 13,
+    lineHeight: 18,
+    fontWeight: "600",
+    color: globalColors.title,
+  },
   summaryTap: {
     flex: 1,
     minHeight: 44,
     justifyContent: "center",
     paddingVertical: 4,
-    paddingLeft: 6,
+    paddingLeft: 0,
     paddingRight: 4,
   },
   title: {

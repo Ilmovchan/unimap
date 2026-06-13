@@ -40,6 +40,11 @@ public sealed class LocationConfiguration : IEntityTypeConfiguration<Location>
             .HasColumnName("address_json")
             .HasColumnType("jsonb");
 
+        builder.Property(x => x.HasShelter)
+            .HasColumnName("has_shelter")
+            .HasDefaultValue(false)
+            .IsRequired();
+
         builder.Property(x => x.CreatedAt)
             .HasColumnName("created_at")
             .IsRequired();

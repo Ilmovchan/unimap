@@ -38,8 +38,9 @@ public sealed class AdminLocationService(
             Title = command.Title.Trim(),
             Latitude = command.Latitude ?? 0,
             Longitude = command.Longitude ?? 0,
-            Description = command.Description,
-            AddressJson = command.AddressJson,
+            Description = NormalizeOptionalText(command.Description),
+            AddressJson = NormalizeOptionalText(command.AddressJson),
+            HasShelter = command.HasShelter,
         };
 
         await repository.AddAsync(entity, cancellationToken);
@@ -82,10 +83,9 @@ public sealed class AdminLocationService(
                     entity.Latitude = command.Latitude.Value;
                 if (command.Longitude.HasValue)
                     entity.Longitude = command.Longitude.Value;
-                if (command.Description is not null)
-                    entity.Description = command.Description;
-                if (command.AddressJson is not null)
-                    entity.AddressJson = command.AddressJson;
+                entity.Description = NormalizeOptionalText(command.Description);
+                entity.AddressJson = NormalizeOptionalText(command.AddressJson);
+                entity.HasShelter = command.HasShelter;
             },
             cancellationToken);
 
@@ -115,6 +115,9 @@ public sealed class AdminLocationService(
         await cacheInvalidator.InvalidateLocationsAsync(cancellationToken);
         return ServiceResult<bool>.Ok(true);
     }
+
+    private static string? NormalizeOptionalText(string? value) =>
+        string.IsNullOrWhiteSpace(value) ? null : value.Trim();
 
     private static IReadOnlyList<Schedule>? BuildSchedule(
         Guid locationId,

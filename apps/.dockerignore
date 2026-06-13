@@ -1,25 +1,14 @@
-**/.classpath
-**/.dockerignore
-**/.env
-**/.git
-**/.gitignore
-**/.project
-**/.settings
-**/.toolstarget
-**/.vs
-**/.vscode
-**/*.*proj.user
-**/*.dbmdl
-**/*.jfm
-**/bin
-**/charts
-**/docker-compose*
-**/compose*
-**/Dockerfile*
-**/node_modules
-**/npm-debug.log
-**/obj
-**/secrets.dev.yaml
-**/values.dev.yaml
-LICENSE
-README.md
+# По умолчанию исключить всё из контекста сборки
+*
+
+# Оставить только серверную часть
+!server/
+!server/**
+
+# Не передавать результаты локальной сборки .NET
+server/**/bin/
+server/**/obj/
+
+# Не передавать служебные файлы IDE и macOS
+server/**/.idea/
+server/**/.DS_Store

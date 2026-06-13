@@ -99,6 +99,12 @@ namespace persistence.Migrations
                         .HasColumnType("double precision")
                         .HasColumnName("latitude");
 
+                    b.Property<bool>("HasShelter")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false)
+                        .HasColumnName("has_shelter");
+
                     b.Property<Guid>("LocationTypeId")
                         .HasColumnType("uuid")
                         .HasColumnName("location_type_id");
@@ -302,9 +308,19 @@ namespace persistence.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("location_id");
 
+                    b.Property<string>("Manager")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("manager");
+
                     b.Property<Guid>("ObjectTypeId")
                         .HasColumnType("uuid")
                         .HasColumnName("object_type_id");
+
+                    b.Property<string>("PhoneNumber")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("phone_number");
 
                     b.Property<string>("Title")
                         .IsRequired()
@@ -316,10 +332,10 @@ namespace persistence.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("updated_at");
 
-                    b.Property<string>("WebsiteUrl")
+                    b.Property<string>("WebUrl")
                         .HasMaxLength(2000)
                         .HasColumnType("character varying(2000)")
-                        .HasColumnName("website_url");
+                        .HasColumnName("web_url");
 
                     b.HasKey("Id");
 

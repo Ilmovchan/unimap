@@ -146,11 +146,15 @@ function formToPayload(
       continue
     }
 
-    const raw = form[field.key]?.trim() ?? ''
-    if (!raw && isEdit) continue
-    if (!raw && !field.required) continue
-
     const payloadKey = field.payloadKey ?? field.key
+    const raw = form[field.key]?.trim() ?? ''
+    if (!raw && isEdit) {
+      if (!field.required && field.type !== 'password') {
+        payload[payloadKey] = null
+      }
+      continue
+    }
+    if (!raw && !field.required) continue
 
     switch (field.type) {
       case 'number':

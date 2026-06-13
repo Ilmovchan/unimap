@@ -16,7 +16,11 @@ public sealed class UniversityObject : ITimestampedEntity
 
     public string? Description { get; set; }
 
-    public string? WebsiteUrl { get; set; }
+    public string? Manager { get; set; }
+
+    public string? PhoneNumber { get; set; }
+
+    public string? WebUrl { get; set; }
 
     public DateTimeOffset CreatedAt { get; set; }
 

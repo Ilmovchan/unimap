@@ -13,6 +13,7 @@ import {
 type Props = {
   style?: StyleProp<ViewStyle>;
   onActivate: () => void;
+  value?: string;
   onChangeText?: (text: string) => void;
 };
 
@@ -20,6 +21,7 @@ type Props = {
 export default function MapSearchBar({
   style,
   onActivate,
+  value,
   onChangeText,
 }: Props) {
   const handleFocus = useCallback(() => {
@@ -43,6 +45,7 @@ export default function MapSearchBar({
         autoCapitalize="none"
         clearButtonMode="while-editing"
         onFocus={handleFocus}
+        value={value}
         onChangeText={onChangeText}
       />
     </View>
@@ -71,10 +74,12 @@ const styles = StyleSheet.create({
   },
   input: {
     flex: 1,
+    height: 44,
     fontSize: 14,
-    lineHeight: 20,
     color: globalColors.title,
     letterSpacing: -0.2,
-    paddingVertical: Platform.OS === "ios" ? 8 : 6,
+    paddingVertical: 0,
+    includeFontPadding: true,
+    textAlignVertical: "center",
   },
 });

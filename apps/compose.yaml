@@ -7,48 +7,61 @@ services:
     environment:
       ASPNETCORE_ENVIRONMENT: Docker
       ASPNETCORE_URLS: http://+:8080
-      ExternalApis__MapTiler__ApiKey: "n6Gpp6UqyuVMeOGRigco"
-      ExternalApis__OpenRouteService__ApiKey: "eyJvcmciOiI1YjNjZTM1OTc4NTExMTAwMDFjZjYyNDgiLCJpZCI6IjExYWViZDk1OTIwNDRlOGQ5ZWRiYmE0MmUwNDc5YjNlIiwiaCI6Im11cm11cjY0In0="
+      ExternalApis__MapTiler__ApiKey: "ТВОЙ_MAPTILER_API_KEY"
+
     expose:
       - "8080"
+
     ports:
       - "5286:8080"
+
     volumes:
       - server-pictures:/app/pictures
+
     depends_on:
       postgres:
         condition: service_healthy
+
       redis:
         condition: service_started
 
-  admin-panel:
-    image: unimap-admin-panel
-    build:
-      context: ./admin-web
-      dockerfile: Dockerfile
-    expose:
-      - "80"
-    ports:
-      - "5173:80"
-    depends_on:
-      - server
+  # admin-panel:
+  #   image: unimap-admin-panel
+  #   build:
+  #     context: ./admin-web
+  #     dockerfile: Dockerfile
+
+  #   expose:
+  #     - "80"
+
+  #   ports:
+  #     - "5173:80"
+
+  #   depends_on:
+  #     - server
 
   postgres:
     image: postgres:17-alpine
+
     environment:
       POSTGRES_DB: unimap
       POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: 1234
+      POSTGRES_PASSWORD: "1234"
+
     volumes:
       - postgres-data:/var/lib/postgresql/data
+
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres -d unimap"]
+      test:
+        - CMD-SHELL
+        - pg_isready -U postgres -d unimap
       interval: 10s
       timeout: 5s
       retries: 5
 
   redis:
     image: redis:8-alpine
+
     volumes:
       - redis-data:/data
 

@@ -9,4 +9,17 @@ build/
 logs/
 *.log
 
-docs/
+docs/*
+!docs/readme.md
+
+# .NET
+bin/
+obj/
+
+# Vite / Expo
+dist/
+.expo/
+
+# env
+.env
+.env.local

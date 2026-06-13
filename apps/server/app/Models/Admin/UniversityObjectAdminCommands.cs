@@ -6,11 +6,15 @@ public sealed record UniversityObjectAdminCreateCommand(
     Guid ObjectTypeId,
     string? Title,
     string? Description,
-    string? WebsiteUrl);
+    string? Manager,
+    string? PhoneNumber,
+    string? WebUrl);
 
 public sealed record UniversityObjectAdminUpdateCommand(
     Guid LocationId,
     Guid ObjectTypeId,
     string? Title,
     string? Description,
-    string? WebsiteUrl);
+    string? Manager,
+    string? PhoneNumber,
+    string? WebUrl);

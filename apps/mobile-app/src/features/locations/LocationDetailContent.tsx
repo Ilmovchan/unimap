@@ -16,6 +16,7 @@ import { useCallback, useEffect, useRef, useState, type ReactNode } from "react"
 import {
   Animated,
   Easing,
+  Linking,
   Pressable,
   StyleSheet,
   Text,
@@ -39,6 +40,7 @@ type Props = {
 };
 
 const COLLAPSE_ANIMATION_MS = 260;
+const DETAIL_FIELD_HORIZONTAL_PADDING = 10;
 
 function formatObjectsList(loc: LocationDetailDto): LocationUniversityObjectDto[] {
   if (!loc.objects?.length) return [];
@@ -186,19 +188,57 @@ function scheduleSummary(schedule: LocationScheduleDto[]): string {
 function InlineDetailRow({
   label,
   value,
+  onPress,
 }: {
   label: string;
   value: string | number | null | undefined;
+  onPress?: () => void;
 }) {
   const text = value == null ? "" : String(value).trim();
   if (!text) return null;
 
+  const content = (
+    <>
+      <Text style={detailStyles.inlineDetailLabel}>{label}</Text>
+      <Text
+        style={[
+          detailStyles.inlineDetailValue,
+          onPress && detailStyles.inlineDetailLink,
+        ]}
+      >
+        {text}
+      </Text>
+    </>
+  );
+
+  if (onPress) {
+    return (
+      <Pressable
+        accessibilityRole="link"
+        onPress={onPress}
+        style={({ pressed }) => [
+          detailStyles.inlineDetailRow,
+          pressed && detailStyles.inlineDetailPressed,
+        ]}
+      >
+        {content}
+      </Pressable>
+    );
+  }
+
   return (
     <View style={detailStyles.inlineDetailRow}>
-      <Text style={detailStyles.inlineDetailLabel}>{label}</Text>
-      <Text style={detailStyles.inlineDetailValue}>{text}</Text>
+      {content}
     </View>
   );
+}
+
+function phoneHref(phoneNumber: string): string {
+  return `tel:${phoneNumber.replace(/[^\d+]/g, "")}`;
+}
+
+function webHref(webUrl: string): string {
+  return /^https?:\/\//i.test(webUrl) ? webUrl : `https://${webUrl}`;
 }
 
 function AnimatedCollapsible({
@@ -261,7 +301,9 @@ function hasObjectExtraInfo(object: LocationUniversityObjectDto): boolean {
   return Boolean(
     (object.floor != null && Number.isFinite(object.floor)) ||
       object.roomNumber?.trim() ||
-      object.websiteUrl?.trim() ||
+      object.manager?.trim() ||
+      object.phoneNumber?.trim() ||
+      object.webUrl?.trim() ||
       object.description?.trim(),
   );
 }
@@ -271,22 +313,23 @@ function UniversityObjectRow({
   first,
   highlighted,
   expanded,
-  locationTitle,
   onToggle,
 }: {
   object: LocationUniversityObjectDto;
   first: boolean;
   highlighted: boolean;
   expanded: boolean;
-  locationTitle: string;
   onToggle: (object: LocationUniversityObjectDto) => void;
 }) {
   const description = object.description?.trim();
-  const websiteUrl = object.websiteUrl?.trim();
+  const manager = object.manager?.trim();
+  const phoneNumber = object.phoneNumber?.trim();
+  const webUrl = object.webUrl?.trim();
   const expandable = hasObjectExtraInfo(object);
 
   return (
     <View>
+      {!first ? <View style={detailStyles.objSeparator} /> : null}
       <Pressable
         accessibilityRole={expandable ? "button" : "text"}
         accessibilityState={expandable ? { expanded } : undefined}
@@ -295,11 +338,17 @@ function UniversityObjectRow({
         onPress={() => onToggle(object)}
         style={({ pressed }) => [
           detailStyles.objRow,
-          first && detailStyles.objRowFirst,
           highlighted && detailStyles.objRowHighlight,
-          expanded && expandable && detailStyles.objRowExpanded,
+          expanded &&
+            expandable &&
+            (highlighted
+              ? detailStyles.objRowHighlightExpanded
+              : detailStyles.objRowExpanded),
           !expandable && detailStyles.objRowStatic,
-          pressed && detailStyles.objRowPressed,
+          pressed &&
+            (highlighted
+              ? detailStyles.objRowHighlightPressed
+              : detailStyles.objRowPressed),
         ]}
       >
         <View style={detailStyles.objIconWrap}>
@@ -328,10 +377,27 @@ function UniversityObjectRow({
       {expandable ? (
         <AnimatedCollapsible expanded={expanded}>
           <View style={detailStyles.inlineDetails}>
-            <InlineDetailRow label="Локація" value={locationTitle} />
             <InlineDetailRow label="Поверх" value={object.floor} />
             <InlineDetailRow label="Аудиторія" value={object.roomNumber} />
-            <InlineDetailRow label="Сайт" value={websiteUrl} />
+            <InlineDetailRow label="Керівник" value={manager} />
+            <InlineDetailRow
+              label="Телефон"
+              value={phoneNumber}
+              onPress={
+                phoneNumber
+                  ? () => void Linking.openURL(phoneHref(phoneNumber))
+                  : undefined
+              }
+            />
+            <InlineDetailRow
+              label="Сайт"
+              value={webUrl}
+              onPress={
+                webUrl
+                  ? () => void Linking.openURL(webHref(webUrl))
+                  : undefined
+              }
+            />
             <InlineDetailRow label="Опис" value={description} />
           </View>
         </AnimatedCollapsible>
@@ -358,6 +424,7 @@ export function LocationDetailSections({
     highlightId || null,
   );
   const [scheduleExpanded, setScheduleExpanded] = useState(false);
+  const [shelterHintVisible, setShelterHintVisible] = useState(false);
 
   const toggleObjectDetail = useCallback((o: LocationUniversityObjectDto) => {
     if (!hasObjectExtraInfo(o)) return;
@@ -368,9 +435,15 @@ export function LocationDetailSections({
     setScheduleExpanded((current) => !current);
   }, []);
 
+  const toggleShelterHint = useCallback(() => {
+    setShelterHintVisible((current) => !current);
+  }, []);
+
   const objectsCard = showObjectsSection ? (
-    <View style={styles.card}>
-      <Text style={styles.sectionLabel}>Тут знаходяться</Text>
+    <View style={[styles.card, detailStyles.detailCard]}>
+      <Text style={[styles.sectionLabel, detailStyles.cardLabel]}>
+        Тут знаходяться
+      </Text>
       {objects.map((o, i) => (
         <UniversityObjectRow
           key={o.id}
@@ -378,7 +451,6 @@ export function LocationDetailSections({
           first={i === 0}
           highlighted={Boolean(highlightId && o.id === highlightId)}
           expanded={expandedObjectId === o.id}
-          locationTitle={headline}
           onToggle={toggleObjectDetail}
         />
       ))}
@@ -388,7 +460,41 @@ export function LocationDetailSections({
   return (
     <>
       {showHeadline ? (
-        <Text style={styles.headline}>{headline}</Text>
+        <View style={detailStyles.headlineRow}>
+          <Text style={[styles.headline, detailStyles.headlineText]}>
+            {headline}
+          </Text>
+          {location.hasShelter ? (
+            <View style={detailStyles.shelterBadgeWrap}>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="Має укриття"
+                onPress={toggleShelterHint}
+                hitSlop={8}
+                style={({ pressed }) => [
+                  detailStyles.shelterBadge,
+                  pressed && detailStyles.shelterBadgePressed,
+                ]}
+              >
+                <MaterialCommunityIcons
+                  name="shield-home"
+                  size={21}
+                  color={globalColors.title}
+                />
+              </Pressable>
+              {shelterHintVisible ? (
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel="Сховати пояснення"
+                  onPress={toggleShelterHint}
+                  style={detailStyles.shelterHint}
+                >
+                  <Text style={detailStyles.shelterHintText}>Має укриття</Text>
+                </Pressable>
+              ) : null}
+            </View>
+          ) : null}
+        </View>
       ) : null}
 
       {photos.length > 0 ? (
@@ -401,13 +507,6 @@ export function LocationDetailSections({
 
       {objectsCard}
 
-      {addressText ? (
-        <View style={styles.card}>
-          <Text style={styles.sectionLabel}>Адреса</Text>
-          <Text style={styles.bodyText}>{addressText}</Text>
-        </View>
-      ) : null}
-
       {showScheduleSection ? (
         <Pressable
           accessibilityRole="button"
@@ -415,13 +514,18 @@ export function LocationDetailSections({
           onPress={toggleSchedule}
           style={({ pressed }) => [
             styles.card,
+            detailStyles.detailCard,
             pressed && styles.cardPressed,
           ]}
         >
-          <View style={detailStyles.collapsibleHeader}>
+          <View style={detailStyles.cardHeader}>
             <View style={detailStyles.collapsibleHeaderText}>
-              <Text style={styles.sectionLabel}>Розклад</Text>
-              <Text style={styles.bodyText}>{scheduleSummary(schedule)}</Text>
+              <Text style={[styles.sectionLabel, detailStyles.cardLabel]}>
+                Розклад
+              </Text>
+              <Text style={detailStyles.cardSummary}>
+                {scheduleSummary(schedule)}
+              </Text>
             </View>
             <MaterialCommunityIcons
               name={scheduleExpanded ? "chevron-up" : "chevron-down"}
@@ -469,9 +573,18 @@ export function LocationDetailSections({
         </Pressable>
       ) : null}
 
+      {addressText ? (
+        <View style={[styles.card, detailStyles.detailCard]}>
+          <Text style={[styles.sectionLabel, detailStyles.cardLabel]}>Адреса</Text>
+          <Text style={styles.bodyText}>{addressText}</Text>
+        </View>
+      ) : null}
+
       {updatedLine ? (
-        <View style={styles.card}>
-          <Text style={styles.sectionLabel}>Останнє оновлення</Text>
+        <View style={[styles.card, detailStyles.detailCard]}>
+          <Text style={[styles.sectionLabel, detailStyles.cardLabel]}>
+            Останнє оновлення
+          </Text>
           <Text style={styles.bodyText}>{updatedLine}</Text>
         </View>
       ) : null}
@@ -481,16 +594,86 @@ export function LocationDetailSections({
 }
 
 const detailStyles = StyleSheet.create({
+  headlineRow: {
+    position: "relative",
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 10,
+    marginBottom: 20,
+  },
+  headlineText: {
+    flex: 1,
+    marginBottom: 0,
+  },
+  shelterBadgeWrap: {
+    position: "relative",
+  },
+  shelterBadge: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "rgba(34, 197, 94, 0.14)",
+    borderWidth: 1,
+    borderColor: "rgba(34, 197, 94, 0.36)",
+  },
+  shelterBadgePressed: {
+    opacity: 0.78,
+  },
+  shelterHint: {
+    position: "absolute",
+    top: 42,
+    right: 0,
+    zIndex: 5,
+    minWidth: 112,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: globalColors.border,
+    backgroundColor: globalColors.surface,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+  },
+  shelterHintText: {
+    fontSize: 13,
+    lineHeight: 18,
+    fontWeight: "600",
+    color: globalColors.title,
+  },
+  detailCard: {
+    borderRadius: 16,
+    paddingHorizontal: 16,
+    paddingVertical: 16,
+  },
+  cardLabel: {
+    marginBottom: 10,
+  },
+  cardHeader: {
+    minHeight: 54,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    borderRadius: 10,
+  },
+  cardSummary: {
+    fontSize: 16,
+    lineHeight: 24,
+    color: globalColors.title,
+  },
   objRow: {
     flexDirection: "row",
     alignItems: "center",
-    marginTop: 14,
-    paddingTop: 14,
-    borderTopWidth: 1,
-    borderTopColor: globalColors.border,
-    borderRadius: 8,
-    paddingHorizontal: 4,
-    paddingVertical: 2,
+    minHeight: 58,
+    borderRadius: 10,
+    paddingHorizontal: 8,
+    paddingVertical: 10,
+    borderWidth: 1,
+    borderColor: "transparent",
+  },
+  objSeparator: {
+    height: 1,
+    marginVertical: 10,
+    backgroundColor: globalColors.border,
   },
   objRowPressed: {
     opacity: 0.88,
@@ -511,18 +694,17 @@ const detailStyles = StyleSheet.create({
     marginLeft: 4,
     alignSelf: "center",
   },
-  objRowFirst: {
-    marginTop: 0,
-    paddingTop: 0,
-    borderTopWidth: 0,
-  },
   objRowHighlight: {
-    backgroundColor: "rgba(37, 99, 235, 0.08)",
-    borderWidth: 1,
-    borderColor: "rgba(37, 99, 235, 0.35)",
-    paddingBottom: 8,
-    marginTop: 8,
-    paddingTop: 8,
+    backgroundColor: "rgba(34, 197, 94, 0.14)",
+    borderColor: "rgba(34, 197, 94, 0.36)",
+  },
+  objRowHighlightPressed: {
+    backgroundColor: "rgba(34, 197, 94, 0.2)",
+    borderColor: "rgba(34, 197, 94, 0.46)",
+  },
+  objRowHighlightExpanded: {
+    backgroundColor: "rgba(34, 197, 94, 0.18)",
+    borderColor: "rgba(34, 197, 94, 0.42)",
   },
   objRowExpanded: {
     backgroundColor: "rgba(33, 32, 30, 0.04)",
@@ -531,13 +713,13 @@ const detailStyles = StyleSheet.create({
     paddingRight: 4,
   },
   objName: {
-    fontSize: 15,
-    lineHeight: 22,
+    fontSize: 16,
+    lineHeight: 23,
     fontWeight: "400",
     color: globalColors.title,
   },
   objMeta: {
-    marginTop: 6,
+    marginTop: 5,
     fontSize: 14,
     lineHeight: 20,
     color: globalColors.subtitle,
@@ -553,16 +735,21 @@ const detailStyles = StyleSheet.create({
     width: "100%",
   },
   inlineDetails: {
-    marginTop: 8,
-    marginLeft: UNIVERSITY_OBJECT_ICON_SIZE + 10,
-    paddingTop: 10,
-    paddingBottom: 6,
+    marginTop: 10,
+    paddingTop: 12,
+    paddingBottom: 4,
     borderTopWidth: 1,
     borderTopColor: globalColors.border,
-    gap: 10,
+    gap: 12,
   },
   inlineDetailRow: {
-    gap: 3,
+    gap: 4,
+    minHeight: 44,
+    justifyContent: "center",
+    paddingHorizontal: DETAIL_FIELD_HORIZONTAL_PADDING,
+  },
+  inlineDetailPressed: {
+    opacity: 0.75,
   },
   inlineDetailLabel: {
     fontSize: 11,
@@ -576,33 +763,30 @@ const detailStyles = StyleSheet.create({
     lineHeight: 20,
     color: globalColors.title,
   },
-  collapsibleHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 12,
-    borderRadius: 8,
+  inlineDetailLink: {
+    color: globalColors.userLocation,
+    textDecorationLine: "underline",
   },
   collapsibleHeaderText: {
     flex: 1,
     minWidth: 0,
   },
   scheduleGrid: {
-    marginTop: 14,
+    marginTop: 12,
     paddingTop: 12,
     borderTopWidth: 1,
     borderTopColor: globalColors.border,
-    gap: 8,
+    gap: 9,
   },
   scheduleRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    gap: 14,
-    borderRadius: 8,
+    gap: 4,
+    minHeight: 44,
+    justifyContent: "center",
+    borderRadius: 10,
     borderWidth: 1,
     borderColor: "transparent",
-    paddingHorizontal: 8,
-    paddingVertical: 6,
+    paddingHorizontal: DETAIL_FIELD_HORIZONTAL_PADDING,
+    paddingVertical: 8,
   },
   scheduleRowOpen: {
     backgroundColor: "rgba(34, 197, 94, 0.14)",
@@ -617,20 +801,18 @@ const detailStyles = StyleSheet.create({
     borderColor: "rgba(239, 68, 68, 0.34)",
   },
   scheduleDay: {
-    width: 28,
-    fontSize: 15,
-    lineHeight: 22,
+    fontSize: 11,
     fontWeight: "600",
-    color: globalColors.title,
+    color: globalColors.subtitle,
+    textTransform: "uppercase",
+    letterSpacing: 0.35,
   },
   scheduleDayToday: {
-    fontWeight: "700",
+    color: globalColors.title,
   },
   scheduleValue: {
-    flex: 1,
-    textAlign: "right",
-    fontSize: 15,
-    lineHeight: 22,
+    fontSize: 14,
+    lineHeight: 20,
     color: globalColors.title,
   },
   scheduleValueToday: {

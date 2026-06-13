@@ -14,7 +14,9 @@ export type LocationUniversityObjectDto = {
   floor?: number | null;
   roomNumber?: string | null;
   description?: string | null;
-  websiteUrl?: string | null;
+  manager?: string | null;
+  phoneNumber?: string | null;
+  webUrl?: string | null;
 };
 
 /** Маркер для карти (легкий список). */
@@ -56,6 +58,7 @@ export type LocationMapDto = {
   address?: string | null;
   addressJson?: string | null;
   description?: string | null;
+  hasShelter?: boolean;
   imageUrl?: string | null;
   photos?: LocationPhotoDto[];
   schedule?: LocationScheduleDto[];
@@ -274,11 +277,21 @@ function parseUniversityObjectsFromApi(
     const descr = pickRaw(o, "description", "Description");
     const description =
       descr === undefined || descr === null ? null : String(descr);
-    const websiteRaw = pickRaw(o, "websiteUrl", "WebsiteUrl");
-    const websiteUrl =
-      websiteRaw === undefined || websiteRaw === null
+    const managerRaw = pickRaw(o, "manager", "Manager");
+    const manager =
+      managerRaw === undefined || managerRaw === null
         ? null
-        : String(websiteRaw).trim() || null;
+        : String(managerRaw).trim() || null;
+    const phoneRaw = pickRaw(o, "phoneNumber", "PhoneNumber");
+    const phoneNumber =
+      phoneRaw === undefined || phoneRaw === null
+        ? null
+        : String(phoneRaw).trim() || null;
+    const webRaw = pickRaw(o, "webUrl", "WebUrl", "websiteUrl", "WebsiteUrl");
+    const webUrl =
+      webRaw === undefined || webRaw === null
+        ? null
+        : String(webRaw).trim() || null;
     out.push({
       id,
       name,
@@ -287,7 +300,9 @@ function parseUniversityObjectsFromApi(
       floor,
       roomNumber,
       description,
-      websiteUrl,
+      manager,
+      phoneNumber,
+      webUrl,
     });
   }
   return out.length ? out : undefined;
@@ -429,6 +444,11 @@ function normalizeLocationMap(raw: Record<string, unknown>): LocationMapDto {
   const descr = pickRaw(raw, "description", "Description");
   const description =
     descr === undefined || descr === null ? null : String(descr);
+  const hasShelterRaw = pickRaw(raw, "hasShelter", "HasShelter", "has_shelter");
+  const hasShelter =
+    typeof hasShelterRaw === "boolean"
+      ? hasShelterRaw
+      : String(hasShelterRaw ?? "").trim().toLowerCase() === "true";
   const photos = parseLocationPhotosFromApi(pickRaw(raw, "photos", "Photos"));
   const schedule = parseLocationScheduleFromApi(
     pickRaw(raw, "schedule", "Schedule", "schedules", "Schedules"),
@@ -472,6 +492,7 @@ function normalizeLocationMap(raw: Record<string, unknown>): LocationMapDto {
     address,
     addressJson,
     description,
+    hasShelter,
     imageUrl,
     photos,
     schedule,

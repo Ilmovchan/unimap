@@ -1,4 +1,9 @@
-import { fetchLocationMarkers } from "@/src/features/api/locationsClient";
+import {
+  fetchLocationMarkers,
+  fetchLocations,
+  locationMapDisplayLabel,
+  type LocationMapDto,
+} from "@/src/features/api/locationsClient";
 import { useLocation } from "@/src/features/core/location/stores/LocationProvider";
 import { createFallbackMapLocation } from "@/src/features/map/defaultMapLocation";
 import { hapticNavigationArrived } from "@/src/features/haptics/unimapHaptics";
@@ -21,6 +26,7 @@ import { trimRouteCoordinatesAheadOfUser } from "@/src/features/map/trimRouteAhe
 import type { RouteLineFeature } from "@/src/features/map/mapRouteStore";
 import LayoutButton from "@/src/features/map/components/LayoutButton";
 import MapSearchChrome from "@/src/features/map/components/MapSearchChrome";
+import type { MapSearchResultPlaceholder } from "@/src/features/map/components/MapSearchResultsPanel";
 import {
   getMapFabInsets,
   mapFabStackBottom,
@@ -35,7 +41,7 @@ import { CameraRef } from "@maplibre/maplibre-react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import log from "loglevel";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { InteractionManager, StyleSheet, View } from "react-native";
+import { InteractionManager, Keyboard, StyleSheet, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 function focusLocationParam(
@@ -46,6 +52,97 @@ function focusLocationParam(
     return raw[0];
   }
   return undefined;
+}
+
+function normalizeSearchText(value: string | null | undefined): string {
+  return (value ?? "")
+    .toLocaleLowerCase("uk-UA")
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/['’`ʼ]/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function locationSearchHaystack(location: LocationMapDto): string {
+  const parts: string[] = [
+    location.name,
+    location.type ?? "",
+    location.typeName ?? "",
+    location.address ?? "",
+    location.addressJson ?? "",
+    ...(location.objects ?? []).flatMap((object) => [
+      object.name,
+      object.type,
+      object.typeName,
+      object.description ?? "",
+      object.manager ?? "",
+      object.roomNumber ?? "",
+      object.phoneNumber ?? "",
+      object.webUrl ?? "",
+    ]),
+  ];
+
+  return normalizeSearchText(parts.filter(Boolean).join(" "));
+}
+
+function matchingObjectIds(
+  location: LocationMapDto,
+  query: string,
+): string[] {
+  if (!query) return [];
+  return (location.objects ?? [])
+    .filter((object) =>
+      normalizeSearchText(
+        [
+          object.name,
+          object.type,
+          object.typeName,
+          object.description ?? "",
+          object.manager ?? "",
+          object.roomNumber ?? "",
+          object.phoneNumber ?? "",
+          object.webUrl ?? "",
+        ].join(" "),
+      ).includes(query),
+    )
+    .map((object) => object.id);
+}
+
+function buildSearchResults(
+  locations: LocationMapDto[],
+  rawQuery: string,
+): MapSearchResultPlaceholder[] {
+  const query = normalizeSearchText(rawQuery);
+  if (query.length < 2) return [];
+
+  return locations
+    .map((location): MapSearchResultPlaceholder | null => {
+      const objectMatches = matchingObjectIds(location, query);
+      const locationMatches = locationSearchHaystack(location).includes(query);
+      if (!locationMatches && objectMatches.length === 0) return null;
+
+      const matchedObjects = (location.objects ?? []).filter((object) =>
+        objectMatches.includes(object.id),
+      );
+      const objectNames = matchedObjects.map((object) => object.name.trim()).filter(Boolean);
+      const subtitle =
+        objectNames.length > 0
+          ? objectNames.slice(0, 3).join(", ")
+          : location.typeName?.trim() || undefined;
+
+      return {
+        id: location.id,
+        title: locationMapDisplayLabel(location),
+        subtitle:
+          objectNames.length > 3
+            ? `${subtitle}, +${objectNames.length - 3}`
+            : subtitle,
+        matchedObjectId: matchedObjects[0]?.id ?? null,
+      };
+    })
+    .filter((item): item is MapSearchResultPlaceholder => item != null)
+    .slice(0, 20);
 }
 
 export default function MapScreen() {
@@ -61,6 +158,8 @@ export default function MapScreen() {
   const cameraRef = useRef<CameraRef | null>(null);
   const location = useLocation().location;
   const [markers, setMarkers] = useState<MapMarkerPoint[]>([]);
+  const [searchLocations, setSearchLocations] = useState<LocationMapDto[]>([]);
+  const [searchQuery, setSearchQuery] = useState("");
   const [markersLoadEnabled, setMarkersLoadEnabled] = useState(false);
   const [selectedLocationId, setSelectedLocationId] = useState<string | null>(
     null,
@@ -114,6 +213,24 @@ export default function MapScreen() {
     };
   }, [markersLoadEnabled]);
 
+  useEffect(() => {
+    if (!MAP_SEARCH_UI_ENABLED) return;
+
+    let cancelled = false;
+    void (async () => {
+      try {
+        const list = await fetchLocations();
+        if (!cancelled) setSearchLocations(list);
+      } catch (e) {
+        log.warn("[UniMap] map search locations load failed", e);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   const handleMapStyleReady = useCallback(() => {
     InteractionManager.runAfterInteractions(() => {
       setMarkersLoadEnabled(true);
@@ -145,6 +262,33 @@ export default function MapScreen() {
       setSelectedLocationId(locationId);
     },
     [clearRoute, selectedLocationId],
+  );
+
+  const focusSearchResult = useCallback(
+    (result: MapSearchResultPlaceholder) => {
+      Keyboard.dismiss();
+      const loc = markers.find((d) => d.id === result.id);
+      clearRoute();
+      setRouteCameraImmersive(false);
+      setSelectedLocationId(result.id);
+      setHighlightObjectId(result.matchedObjectId?.trim() || null);
+
+      if (!loc || !Number.isFinite(loc.lat) || !Number.isFinite(loc.lng)) {
+        return;
+      }
+
+      focusCameraLikeNavigateButton(
+        cameraRef,
+        [loc.lng, loc.lat],
+        "tapSingleMarker",
+      );
+    },
+    [clearRoute, markers],
+  );
+
+  const searchResults = useMemo(
+    () => buildSearchResults(searchLocations, searchQuery),
+    [searchLocations, searchQuery],
   );
 
   useEffect(() => {
@@ -440,6 +584,10 @@ export default function MapScreen() {
           top={fab.top}
           horizontalInset={fab.right}
           unreadNewsCount={unreadNewsCount}
+          query={searchQuery}
+          results={searchResults}
+          onChangeQuery={setSearchQuery}
+          onSelectResult={focusSearchResult}
           onOpenLocations={() => {
             router.push("/locations");
           }}

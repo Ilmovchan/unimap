@@ -1,6 +1,8 @@
 import LayoutButton from "@/src/features/map/components/LayoutButton";
 import MapSearchBar from "@/src/features/map/components/MapSearchBar";
-import MapSearchResultsPanel from "@/src/features/map/components/MapSearchResultsPanel";
+import MapSearchResultsPanel, {
+  type MapSearchResultPlaceholder,
+} from "@/src/features/map/components/MapSearchResultsPanel";
 import { MAP_SEARCH_UI_ENABLED } from "@/src/features/map/mapSearchConfig";
 import { globalColors } from "@/src/styles/styles";
 import { Ionicons } from "@expo/vector-icons";
@@ -11,6 +13,10 @@ type Props = {
   top: number;
   horizontalInset: number;
   unreadNewsCount: number;
+  query: string;
+  results: MapSearchResultPlaceholder[];
+  onChangeQuery: (query: string) => void;
+  onSelectResult: (result: MapSearchResultPlaceholder) => void;
   onOpenLocations: () => void;
   onOpenNews: () => void;
 };
@@ -23,6 +29,10 @@ export default function MapSearchChrome({
   top,
   horizontalInset,
   unreadNewsCount,
+  query,
+  results,
+  onChangeQuery,
+  onSelectResult,
   onOpenLocations,
   onOpenNews,
 }: Props) {
@@ -75,7 +85,14 @@ export default function MapSearchChrome({
             }}
           />
 
-          <MapSearchBar onActivate={openSearchResults} />
+          <MapSearchBar
+            value={query}
+            onActivate={openSearchResults}
+            onChangeText={(text) => {
+              onChangeQuery(text);
+              openSearchResults();
+            }}
+          />
 
           <LayoutButton
             style={styles.topRowButton}
@@ -100,7 +117,15 @@ export default function MapSearchChrome({
         </View>
 
         {searchResultsOpen ? (
-          <MapSearchResultsPanel onClose={closeSearchResults} />
+          <MapSearchResultsPanel
+            query={query}
+            results={results}
+            onClose={closeSearchResults}
+            onSelect={(result) => {
+              closeSearchResults();
+              onSelectResult(result);
+            }}
+          />
         ) : null}
       </View>
     </>

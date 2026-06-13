@@ -30,7 +30,9 @@ public static class LocationResponseMaps
             type = o.ObjectType.Code,
             typeName = o.ObjectType.TitleUk,
             o.Description,
-            websiteUrl = o.WebsiteUrl,
+            manager = o.Manager,
+            phoneNumber = o.PhoneNumber,
+            webUrl = o.WebUrl,
         };
 
     private static object ScheduleBrief(Schedule schedule) =>
@@ -59,6 +61,7 @@ public static class LocationResponseMaps
             latitude = location.Latitude,
             longitude = location.Longitude,
             location.Description,
+            hasShelter = location.HasShelter,
             imageUrl = LocationPhotoResolver.MainImageUrl(location, pictureProvider, requestBaseUrl),
             location.AddressJson,
             createdAt = location.CreatedAt,
@@ -89,6 +92,7 @@ public static class LocationResponseMaps
             latitude = location.Latitude,
             longitude = location.Longitude,
             location.Description,
+            hasShelter = location.HasShelter,
             imageUrl = LocationPhotoResolver.MainImageUrl(location, pictureProvider, requestBaseUrl),
             photos = LocationPhotoResolver.PublicPhotos(location, pictureProvider, requestBaseUrl),
             location.AddressJson,

@@ -60,6 +60,7 @@ public static class LocationAdminEndpoints
                 dto.Longitude,
                 dto.Description,
                 dto.AddressJson,
+                dto.HasShelter,
                 dto.Schedule?.Select(x => new LocationScheduleAdminCommand(
                     x.DayOfWeek,
                     x.OpeningAt,
@@ -91,6 +92,7 @@ public static class LocationAdminEndpoints
                 dto.Longitude,
                 dto.Description,
                 dto.AddressJson,
+                dto.HasShelter,
                 dto.Schedule?.Select(x => new LocationScheduleAdminCommand(
                     x.DayOfWeek,
                     x.OpeningAt,
@@ -119,6 +121,7 @@ public static class LocationAdminEndpoints
         double? Longitude,
         string? Description,
         string? AddressJson,
+        bool HasShelter,
         IReadOnlyList<LocationScheduleWriteDto>? Schedule);
 
     private sealed record LocationScheduleWriteDto(
