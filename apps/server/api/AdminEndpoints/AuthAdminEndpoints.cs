@@ -32,7 +32,11 @@ public static class AuthAdminEndpoints
             cancellationToken);
 
         if (!result.IsSuccess)
-            return Results.Json(new { error = result.Error }, statusCode: result.StatusCode);
+        {
+            return Results.Json(
+                new { error = result.Error },
+                statusCode: result.StatusCode);
+        }
 
         var admin = result.Value!;
         var options = jwtOptions.Value;
@@ -54,7 +58,9 @@ public static class AuthAdminEndpoints
     {
         httpContext.Response.Cookies.Delete(
             jwtOptions.Value.CookieName,
-            CreateCookieOptions(DateTimeOffset.UtcNow, environment.IsProduction()));
+            CreateCookieOptions(
+                DateTimeOffset.UtcNow.AddDays(-1),
+                environment.IsProduction()));
 
         return Results.NoContent();
     }
@@ -62,32 +68,43 @@ public static class AuthAdminEndpoints
     private static IResult MeAsync(HttpContext httpContext)
     {
         var principal = httpContext.User;
+
         if (principal.Identity?.IsAuthenticated != true)
             return Results.Unauthorized();
 
-        var id = principal.FindFirstValue(ClaimTypes.NameIdentifier)
+        var id =
+            principal.FindFirstValue(ClaimTypes.NameIdentifier)
             ?? principal.FindFirstValue(JwtRegisteredClaimNames.Sub);
 
         return Results.Ok(new
         {
             id,
-            email = principal.FindFirstValue(ClaimTypes.Email)
+            email =
+                principal.FindFirstValue(ClaimTypes.Email)
                 ?? principal.FindFirstValue(JwtRegisteredClaimNames.Email),
-            username = principal.FindFirstValue(ClaimTypes.Name)
+            username =
+                principal.FindFirstValue(ClaimTypes.Name)
                 ?? principal.FindFirstValue(JwtRegisteredClaimNames.UniqueName),
             role = principal.FindFirstValue(ClaimTypes.Role),
         });
     }
 
-    private static CookieOptions CreateCookieOptions(DateTimeOffset expires, bool isProduction) =>
-        new()
+    private static CookieOptions CreateCookieOptions(
+        DateTimeOffset expires,
+        bool isProduction)
+    {
+        return new CookieOptions
         {
             HttpOnly = true,
             Secure = isProduction,
-            SameSite = SameSiteMode.Lax,
+            SameSite = isProduction
+                ? SameSiteMode.None
+                : SameSiteMode.Lax,
             Path = "/",
             Expires = expires,
+            IsEssential = true,
         };
+    }
 
     private sealed record LoginRequest(string Email, string Password);
 }
