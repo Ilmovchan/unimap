@@ -6,7 +6,7 @@ export default defineConfig({
   server: {
     proxy: {
       '/api': {
-        target: 'http://localhost:5286',
+        target: 'https://unimap-production-578f.up.railway.app',
         changeOrigin: true,
       },
     },
