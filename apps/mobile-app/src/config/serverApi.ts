@@ -40,6 +40,20 @@ function replaceUrlHostname(url: string, hostname: string): string {
   }
 }
 
+function shouldRewriteApiHostForDev(url: string): boolean {
+  try {
+    const parsed = new URL(url.includes("://") ? url : `http://${url}`);
+    return (
+      /^(localhost|127\.0\.0\.1)$/i.test(parsed.hostname) ||
+      /^10\.\d{1,3}\.\d{1,3}\.\d{1,3}$/.test(parsed.hostname) ||
+      /^172\.(1[6-9]|2\d|3[0-1])\.\d{1,3}\.\d{1,3}$/.test(parsed.hostname) ||
+      /^192\.168\.\d{1,3}\.\d{1,3}$/.test(parsed.hostname)
+    );
+  } catch {
+    return false;
+  }
+}
+
 /** LAN-IP Mac/PC для фізичного телефона або Android-емулятора в dev. */
 function resolveDevLanHost(): string | null {
   if (!__DEV__) return null;
@@ -118,6 +132,10 @@ export function serverApiBase(): string {
   if (!trimmed) return "";
 
   if (__DEV__) {
+    if (!shouldRewriteApiHostForDev(trimmed)) {
+      return trimmed;
+    }
+
     if (isIosSimulator()) {
       return replaceUrlHostname(trimmed, "localhost");
     }

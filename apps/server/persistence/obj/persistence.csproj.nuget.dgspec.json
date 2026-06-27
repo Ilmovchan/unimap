@@ -1,17 +1,17 @@
 {
   "format": 1,
   "restore": {
-    "/Users/user/code/unimap/apps/server/persistence/persistence.csproj": {}
+    "/Users/user/unimap/apps/server/persistence/persistence.csproj": {}
   },
   "projects": {
-    "/Users/user/code/unimap/apps/server/domain/domain.csproj": {
+    "/Users/user/unimap/apps/server/domain/domain.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "/Users/user/code/unimap/apps/server/domain/domain.csproj",
+        "projectUniqueName": "/Users/user/unimap/apps/server/domain/domain.csproj",
         "projectName": "domain",
-        "projectPath": "/Users/user/code/unimap/apps/server/domain/domain.csproj",
+        "projectPath": "/Users/user/unimap/apps/server/domain/domain.csproj",
         "packagesPath": "/Users/user/.nuget/packages/",
-        "outputPath": "/Users/user/code/unimap/apps/server/domain/obj/",
+        "outputPath": "/Users/user/unimap/apps/server/domain/obj/",
         "projectStyle": "PackageReference",
         "configFilePaths": [
           "/Users/user/.nuget/NuGet/NuGet.Config"
@@ -75,14 +75,14 @@
         }
       }
     },
-    "/Users/user/code/unimap/apps/server/persistence/persistence.csproj": {
+    "/Users/user/unimap/apps/server/persistence/persistence.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "/Users/user/code/unimap/apps/server/persistence/persistence.csproj",
+        "projectUniqueName": "/Users/user/unimap/apps/server/persistence/persistence.csproj",
         "projectName": "persistence",
-        "projectPath": "/Users/user/code/unimap/apps/server/persistence/persistence.csproj",
+        "projectPath": "/Users/user/unimap/apps/server/persistence/persistence.csproj",
         "packagesPath": "/Users/user/.nuget/packages/",
-        "outputPath": "/Users/user/code/unimap/apps/server/persistence/obj/",
+        "outputPath": "/Users/user/unimap/apps/server/persistence/obj/",
         "projectStyle": "PackageReference",
         "configFilePaths": [
           "/Users/user/.nuget/NuGet/NuGet.Config"
@@ -98,8 +98,8 @@
             "framework": "net9.0",
             "targetAlias": "net9.0",
             "projectReferences": {
-              "/Users/user/code/unimap/apps/server/domain/domain.csproj": {
-                "projectPath": "/Users/user/code/unimap/apps/server/domain/domain.csproj"
+              "/Users/user/unimap/apps/server/domain/domain.csproj": {
+                "projectPath": "/Users/user/unimap/apps/server/domain/domain.csproj"
               }
             }
           }

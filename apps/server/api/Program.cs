@@ -7,6 +7,7 @@ using domain.Entities;
 using infrastructure;
 using infrastructure.BackgroundServices;
 using infrastructure.Pictures;
+using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.EntityFrameworkCore;
 using persistence;
 
@@ -24,6 +25,13 @@ builder.Services.AddApplication(builder.Configuration);
 builder.Services.AddHostedService<LocationAddressJsonBackfillWorker>();
 builder.Services.AddPictureStorage(builder.Configuration);
 builder.Services.AddJwtCookieAuthentication(builder.Configuration);
+builder.Services.Configure<ForwardedHeadersOptions>(options =>
+{
+    options.ForwardedHeaders =
+        ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
+    options.KnownNetworks.Clear();
+    options.KnownProxies.Clear();
+});
 
 var corsOrigins = builder.Configuration.GetSection("Cors:Origins").Get<string[]>() ??
 [
@@ -45,6 +53,8 @@ builder.Services.AddSwaggerGen();
 builder.Services.AddEndpointsApiExplorer();
 
 var app = builder.Build();
+
+app.UseForwardedHeaders();
 
 var picturesRoot = Path.Combine(
     app.Environment.ContentRootPath,

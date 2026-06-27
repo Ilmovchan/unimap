@@ -1,17 +1,33 @@
 {
-  "cli": {
-    "version": ">= 16.28.0",
-    "appVersionSource": "remote"
-  },
   "build": {
     "development": {
       "developmentClient": true,
-      "distribution": "internal"
+      "distribution": "internal",
+      "environment": "development"
     },
     "preview": {
-      "distribution": "internal"
+      "distribution": "internal",
+      "environment": "preview",
+      "android": {
+        "buildType": "apk"
+      }
+    },
+    "production-apk": {
+      "distribution": "internal",
+      "environment": "production",
+      "env": {
+        "EXPO_PUBLIC_UNIMAP_SERVER_API_LINK": "https://unimap-production-578f.up.railway.app/api"
+      },
+      "android": {
+        "buildType": "apk"
+      }
+    },
+    "ios-internal": {
+      "distribution": "internal",
+      "environment": "production"
     },
     "production": {
+      "environment": "production",
       "autoIncrement": true
     }
   },

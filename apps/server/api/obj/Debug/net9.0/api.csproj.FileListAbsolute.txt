@@ -320,3 +320,4 @@
 /Users/user/code/unimap/apps/server/api/obj/Debug/net9.0/api.pdb
 /Users/user/code/unimap/apps/server/api/obj/Debug/net9.0/api.genruntimeconfig.cache
 /Users/user/code/unimap/apps/server/api/obj/Debug/net9.0/ref/api.dll
+/Users/user/unimap/apps/server/api/obj/Debug/net9.0/api.sourcelink.json

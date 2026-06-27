@@ -20,3 +20,4 @@
 /Users/user/code/unimap/apps/server/domain/obj/Debug/net9.0/refint/domain.dll
 /Users/user/code/unimap/apps/server/domain/obj/Debug/net9.0/domain.pdb
 /Users/user/code/unimap/apps/server/domain/obj/Debug/net9.0/ref/domain.dll
+/Users/user/unimap/apps/server/domain/obj/Debug/net9.0/domain.sourcelink.json

@@ -7,7 +7,7 @@ services:
     environment:
       ASPNETCORE_ENVIRONMENT: Docker
       ASPNETCORE_URLS: http://+:8080
-      ExternalApis__MapTiler__ApiKey: "ТВОЙ_MAPTILER_API_KEY"
+      ExternalApis__MapTiler__ApiKey: "MAPTILER_API_KEY"
 
     expose:
       - "8080"
@@ -25,20 +25,20 @@ services:
       redis:
         condition: service_started
 
-  # admin-panel:
-  #   image: unimap-admin-panel
-  #   build:
-  #     context: ./admin-web
-  #     dockerfile: Dockerfile
+  admin-panel:
+    image: unimap-admin-panel
+    build:
+      context: ./admin-web
+      dockerfile: Dockerfile
 
-  #   expose:
-  #     - "80"
+    expose:
+      - "80"
 
-  #   ports:
-  #     - "5173:80"
+    ports:
+      - "5173:80"
 
-  #   depends_on:
-  #     - server
+    depends_on:
+      - server
 
   postgres:
     image: postgres:17-alpine

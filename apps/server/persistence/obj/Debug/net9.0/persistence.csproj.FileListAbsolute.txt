@@ -32,3 +32,4 @@
 /Users/user/code/unimap/apps/server/persistence/obj/Debug/net9.0/persistence.pdb
 /Users/user/code/unimap/apps/server/persistence/obj/Debug/net9.0/persistence.genruntimeconfig.cache
 /Users/user/code/unimap/apps/server/persistence/obj/Debug/net9.0/ref/persistence.dll
+/Users/user/unimap/apps/server/persistence/obj/Debug/net9.0/persistence.sourcelink.json

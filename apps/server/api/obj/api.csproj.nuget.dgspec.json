@@ -1,17 +1,17 @@
 {
   "format": 1,
   "restore": {
-    "/Users/user/code/unimap/apps/server/api/api.csproj": {}
+    "/Users/user/unimap/apps/server/api/api.csproj": {}
   },
   "projects": {
-    "/Users/user/code/unimap/apps/server/api/api.csproj": {
+    "/Users/user/unimap/apps/server/api/api.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "/Users/user/code/unimap/apps/server/api/api.csproj",
+        "projectUniqueName": "/Users/user/unimap/apps/server/api/api.csproj",
         "projectName": "api",
-        "projectPath": "/Users/user/code/unimap/apps/server/api/api.csproj",
+        "projectPath": "/Users/user/unimap/apps/server/api/api.csproj",
         "packagesPath": "/Users/user/.nuget/packages/",
-        "outputPath": "/Users/user/code/unimap/apps/server/api/obj/",
+        "outputPath": "/Users/user/unimap/apps/server/api/obj/",
         "projectStyle": "PackageReference",
         "configFilePaths": [
           "/Users/user/.nuget/NuGet/NuGet.Config"
@@ -27,17 +27,17 @@
             "framework": "net9.0",
             "targetAlias": "net9.0",
             "projectReferences": {
-              "/Users/user/code/unimap/apps/server/app/app.csproj": {
-                "projectPath": "/Users/user/code/unimap/apps/server/app/app.csproj"
+              "/Users/user/unimap/apps/server/app/app.csproj": {
+                "projectPath": "/Users/user/unimap/apps/server/app/app.csproj"
               },
-              "/Users/user/code/unimap/apps/server/domain/domain.csproj": {
-                "projectPath": "/Users/user/code/unimap/apps/server/domain/domain.csproj"
+              "/Users/user/unimap/apps/server/domain/domain.csproj": {
+                "projectPath": "/Users/user/unimap/apps/server/domain/domain.csproj"
               },
-              "/Users/user/code/unimap/apps/server/infrastructure/infrastructure.csproj": {
-                "projectPath": "/Users/user/code/unimap/apps/server/infrastructure/infrastructure.csproj"
+              "/Users/user/unimap/apps/server/infrastructure/infrastructure.csproj": {
+                "projectPath": "/Users/user/unimap/apps/server/infrastructure/infrastructure.csproj"
               },
-              "/Users/user/code/unimap/apps/server/persistence/persistence.csproj": {
-                "projectPath": "/Users/user/code/unimap/apps/server/persistence/persistence.csproj"
+              "/Users/user/unimap/apps/server/persistence/persistence.csproj": {
+                "projectPath": "/Users/user/unimap/apps/server/persistence/persistence.csproj"
               }
             }
           }
@@ -119,14 +119,14 @@
         }
       }
     },
-    "/Users/user/code/unimap/apps/server/app/app.csproj": {
+    "/Users/user/unimap/apps/server/app/app.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "/Users/user/code/unimap/apps/server/app/app.csproj",
+        "projectUniqueName": "/Users/user/unimap/apps/server/app/app.csproj",
         "projectName": "app",
-        "projectPath": "/Users/user/code/unimap/apps/server/app/app.csproj",
+        "projectPath": "/Users/user/unimap/apps/server/app/app.csproj",
         "packagesPath": "/Users/user/.nuget/packages/",
-        "outputPath": "/Users/user/code/unimap/apps/server/app/obj/",
+        "outputPath": "/Users/user/unimap/apps/server/app/obj/",
         "projectStyle": "PackageReference",
         "configFilePaths": [
           "/Users/user/.nuget/NuGet/NuGet.Config"
@@ -142,8 +142,8 @@
             "framework": "net9.0",
             "targetAlias": "net9.0",
             "projectReferences": {
-              "/Users/user/code/unimap/apps/server/domain/domain.csproj": {
-                "projectPath": "/Users/user/code/unimap/apps/server/domain/domain.csproj"
+              "/Users/user/unimap/apps/server/domain/domain.csproj": {
+                "projectPath": "/Users/user/unimap/apps/server/domain/domain.csproj"
               }
             }
           }
@@ -208,14 +208,14 @@
         }
       }
     },
-    "/Users/user/code/unimap/apps/server/domain/domain.csproj": {
+    "/Users/user/unimap/apps/server/domain/domain.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "/Users/user/code/unimap/apps/server/domain/domain.csproj",
+        "projectUniqueName": "/Users/user/unimap/apps/server/domain/domain.csproj",
         "projectName": "domain",
-        "projectPath": "/Users/user/code/unimap/apps/server/domain/domain.csproj",
+        "projectPath": "/Users/user/unimap/apps/server/domain/domain.csproj",
         "packagesPath": "/Users/user/.nuget/packages/",
-        "outputPath": "/Users/user/code/unimap/apps/server/domain/obj/",
+        "outputPath": "/Users/user/unimap/apps/server/domain/obj/",
         "projectStyle": "PackageReference",
         "configFilePaths": [
           "/Users/user/.nuget/NuGet/NuGet.Config"
@@ -279,14 +279,14 @@
         }
       }
     },
-    "/Users/user/code/unimap/apps/server/infrastructure/infrastructure.csproj": {
+    "/Users/user/unimap/apps/server/infrastructure/infrastructure.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "/Users/user/code/unimap/apps/server/infrastructure/infrastructure.csproj",
+        "projectUniqueName": "/Users/user/unimap/apps/server/infrastructure/infrastructure.csproj",
         "projectName": "infrastructure",
-        "projectPath": "/Users/user/code/unimap/apps/server/infrastructure/infrastructure.csproj",
+        "projectPath": "/Users/user/unimap/apps/server/infrastructure/infrastructure.csproj",
         "packagesPath": "/Users/user/.nuget/packages/",
-        "outputPath": "/Users/user/code/unimap/apps/server/infrastructure/obj/",
+        "outputPath": "/Users/user/unimap/apps/server/infrastructure/obj/",
         "projectStyle": "PackageReference",
         "configFilePaths": [
           "/Users/user/.nuget/NuGet/NuGet.Config"
@@ -302,11 +302,11 @@
             "framework": "net9.0",
             "targetAlias": "net9.0",
             "projectReferences": {
-              "/Users/user/code/unimap/apps/server/app/app.csproj": {
-                "projectPath": "/Users/user/code/unimap/apps/server/app/app.csproj"
+              "/Users/user/unimap/apps/server/app/app.csproj": {
+                "projectPath": "/Users/user/unimap/apps/server/app/app.csproj"
               },
-              "/Users/user/code/unimap/apps/server/persistence/persistence.csproj": {
-                "projectPath": "/Users/user/code/unimap/apps/server/persistence/persistence.csproj"
+              "/Users/user/unimap/apps/server/persistence/persistence.csproj": {
+                "projectPath": "/Users/user/unimap/apps/server/persistence/persistence.csproj"
               }
             }
           }
@@ -394,14 +394,14 @@
         }
       }
     },
-    "/Users/user/code/unimap/apps/server/persistence/persistence.csproj": {
+    "/Users/user/unimap/apps/server/persistence/persistence.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "/Users/user/code/unimap/apps/server/persistence/persistence.csproj",
+        "projectUniqueName": "/Users/user/unimap/apps/server/persistence/persistence.csproj",
         "projectName": "persistence",
-        "projectPath": "/Users/user/code/unimap/apps/server/persistence/persistence.csproj",
+        "projectPath": "/Users/user/unimap/apps/server/persistence/persistence.csproj",
         "packagesPath": "/Users/user/.nuget/packages/",
-        "outputPath": "/Users/user/code/unimap/apps/server/persistence/obj/",
+        "outputPath": "/Users/user/unimap/apps/server/persistence/obj/",
         "projectStyle": "PackageReference",
         "configFilePaths": [
           "/Users/user/.nuget/NuGet/NuGet.Config"
@@ -417,8 +417,8 @@
             "framework": "net9.0",
             "targetAlias": "net9.0",
             "projectReferences": {
-              "/Users/user/code/unimap/apps/server/domain/domain.csproj": {
-                "projectPath": "/Users/user/code/unimap/apps/server/domain/domain.csproj"
+              "/Users/user/unimap/apps/server/domain/domain.csproj": {
+                "projectPath": "/Users/user/unimap/apps/server/domain/domain.csproj"
               }
             }
           }

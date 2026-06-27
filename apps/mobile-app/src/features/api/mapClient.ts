@@ -27,6 +27,26 @@ function isStyleUrlString(value: string): boolean {
   );
 }
 
+function normalizeStyleResourceUrl(value: string): string {
+  const devUrl = rewriteDevServerHost(value) ?? value;
+  const base = serverApiBase();
+
+  if (!base) return devUrl;
+
+  try {
+    const parsed = new URL(devUrl);
+    const baseUrl = new URL(base);
+
+    if (parsed.hostname === baseUrl.hostname) {
+      return devUrl.replace(/^[a-z][a-z\d+.-]*:/i, baseUrl.protocol);
+    }
+
+    return devUrl;
+  } catch {
+    return devUrl;
+  }
+}
+
 /** Підміняє localhost лише в URL-рядках стилю (не обходить увесь JSON без потреби). */
 function rewriteStyleResourceUrls(style: unknown): MapStyleSpec {
   if (style === null || typeof style !== "object" || Array.isArray(style)) {
@@ -36,7 +56,7 @@ function rewriteStyleResourceUrls(style: unknown): MapStyleSpec {
   const walk = (value: unknown): unknown => {
     if (typeof value === "string") {
       if (!isStyleUrlString(value)) return value;
-      return rewriteDevServerHost(value) ?? value;
+      return normalizeStyleResourceUrl(value);
     }
     if (Array.isArray(value)) {
       return value.map(walk);
@@ -52,6 +72,73 @@ function rewriteStyleResourceUrls(style: unknown): MapStyleSpec {
   };
 
   return walk(style) as MapStyleSpec;
+}
+
+async function inlineTileJsonSources(style: MapStyleSpec): Promise<MapStyleSpec> {
+  const sources = style.sources;
+  if (!sources || typeof sources !== "object" || Array.isArray(sources)) {
+    return style;
+  }
+
+  const entries = await Promise.all(
+    Object.entries(sources).map(async ([name, source]) => {
+      if (!source || typeof source !== "object" || Array.isArray(source)) {
+        return [name, source] as const;
+      }
+
+      const sourceRecord = source as Record<string, unknown>;
+      const sourceUrl =
+        typeof sourceRecord.url === "string"
+          ? normalizeStyleResourceUrl(sourceRecord.url)
+          : null;
+
+      if (!sourceUrl || !/^https?:\/\//i.test(sourceUrl)) {
+        return [name, source] as const;
+      }
+
+      try {
+        const response = await fetch(sourceUrl, {
+          headers: { Accept: "application/json" },
+        });
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}`);
+        }
+
+        const tileJson = rewriteStyleResourceUrls(await response.json());
+        if (!Array.isArray(tileJson.tiles)) {
+          return [name, { ...sourceRecord, url: sourceUrl }] as const;
+        }
+
+        const inlinedSource = { ...sourceRecord };
+        delete inlinedSource.url;
+
+        for (const key of [
+          "tiles",
+          "minzoom",
+          "maxzoom",
+          "bounds",
+          "scheme",
+          "attribution",
+          "promoteId",
+          "volatile",
+        ]) {
+          if (tileJson[key] !== undefined) {
+            inlinedSource[key] = tileJson[key];
+          }
+        }
+
+        return [name, inlinedSource] as const;
+      } catch (error) {
+        log.warn("[UniMap] TileJSON fetch failed", sourceUrl, error);
+        return [name, { ...sourceRecord, url: sourceUrl }] as const;
+      }
+    }),
+  );
+
+  return {
+    ...style,
+    sources: Object.fromEntries(entries),
+  };
 }
 
 let cachedMapStyle: MapStyleSpec | null = null;
@@ -85,6 +172,7 @@ export async function fetchMapStyle(): Promise<MapStyleSpec> {
   }
 
   const json: unknown = await res.json();
-  cachedMapStyle = rewriteStyleResourceUrls(json);
+  const normalizedStyle = rewriteStyleResourceUrls(json);
+  cachedMapStyle = await inlineTileJsonSources(normalizedStyle);
   return cachedMapStyle;
 }
